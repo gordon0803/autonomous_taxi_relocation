@@ -20,9 +20,9 @@ If time_to_destination<=0, check the battery of this taxi.
 
 Else send the taxi back to travel queue
 
-5. Update waiting time, determine if passenger will leave, and generate passengers
+5. Update waiting time, determine if existing passenger will leave, and generate new passengers
 
-6. Serve passengers
+6. Serve passengers as FIFO system
 
 7. Summarize the status of the system (states, rewards)
 
