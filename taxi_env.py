@@ -11,8 +11,8 @@ class taxi_agent():
 
 	#each taxi serves as an agent,where we need to track the origin, destination, and the battery of each taxis
 	def __init__(self, battery_miles): #provide the capacity of the battery
-		self.battery=200 #remaining battery
-		self.max_battery=200 #battery capacity
+		self.battery=battery_miles #remaining battery
+		self.max_battery=battery_miles #battery capacity
 		self.idle=True
 		self.destination=None
 		self.time_to_destination=0
@@ -61,6 +61,17 @@ class taxi_simulator():
 		self.taxi_in_q=[[] for i in range(self.N)] #taxis waiting in the queue of each station
 		self.taxi_in_charge=[[] for i in range(self.N)] #taxis charging at each station
 
+	#assign the initial list of taxis
+	def init_taxi(self,taxi_input):
+		#taxi_input can be a scalar or a vector
+		#if scalar: each station has k taxis
+		if not isinstance(taxi_input,list):
+			taxi_input=[taxi_input for i in range(self.N)] #convert it to a list
+
+		for i in range(self.N):
+			for t in range(taxi_input[i]):
+				taxi=taxi_agent(200) #battery is set to 200 here
+				self.taxi_in_q[i].append(taxi)
 
 	#1: execute actions
 	def step(self,action): 
@@ -77,6 +88,19 @@ class taxi_simulator():
 				distance_to_destination=self.distance[i][action[i]]
 				taxi.trip(i,action[i],time_to_destination,distance_to_destination)
 				self.taxi_in_relocation.append(taxi)
+
+		#now start the simulation
+
+		#step 1: travel
+		self.taxi_travel()
+		#step 2: charging
+		self.taxi_charging()
+		#step 3: arrive
+		self.taxi_arrive()
+		#step 4: update passenger
+		self.passenger_update()
+		#step 5: serve passengers
+		self.passenger_serve()
 
 
 	#2: all taxi traveling
@@ -178,7 +202,6 @@ class taxi_simulator():
 			taxi_in_relocation[t.origin,t.destination]+=1
 
 		return passenger_gap,taxi_in_travel,taxi_in_relocation,reward
-
 
 
 
