@@ -20,7 +20,7 @@ If time_to_destination<=0, check the battery of this taxi.
 
 Else send the taxi back to travel queue
 
-5. Update waiting time, and generate passengers
+5. Update waiting time, determine if passenger will leave, and generate passengers
 
 6. Serve passengers
 
