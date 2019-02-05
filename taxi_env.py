@@ -83,11 +83,14 @@ class taxi_simulator():
 		#Use -1 to denote no relocation
 		for i in range(len(action)):
 			if action[i]>-1:
-				taxi=self.taxi_in_q[i].pop() #relocate the first taxi
-				time_to_destination=self.travel_time[i][action[i]] #from i to action[i]
-				distance_to_destination=self.distance[i][action[i]]
-				taxi.trip(i,action[i],time_to_destination,distance_to_destination)
-				self.taxi_in_relocation.append(taxi)
+				if self.taxi_in_q[i]:
+					taxi=self.taxi_in_q[i].pop() #relocate the first taxi
+					time_to_destination=self.travel_time[i][action[i]] #from i to action[i]
+					distance_to_destination=self.distance[i][action[i]]
+					taxi.trip(i,action[i],time_to_destination,distance_to_destination)
+					self.taxi_in_relocation.append(taxi)
+				# else:
+				# 	print('No taxis in Q, check if your relocation action is derived properly')
 
 		#now start the simulation
 
@@ -114,32 +117,34 @@ class taxi_simulator():
 		#one time step would charge 0.5% of the battery
 		for i in range(self.N):
 			for j in range(len(self.taxi_in_charge[i])):
-				taxi=self.taxi_in_charge[i].pop()
-				taxi.battery+=0.005*taxi.max_battery #every time step, 0.5% of battery get charged
-				if taxi.battery>=taxi.max_battery:
-					taxi.battery=taxi.max_battery
-					self.taxi_in_q[i].append(taxi)
-				else:
-					#not fully charged, send it back to the charging q
-					self.taxi_in_charge[i].append(taxi)
+				if self.taxi_in_charge[i]:
+					taxi=self.taxi_in_charge[i].pop()
+					taxi.battery+=0.005*taxi.max_battery #every time step, 0.5% of battery get charged
+					if taxi.battery>=taxi.max_battery:
+						taxi.battery=taxi.max_battery
+						self.taxi_in_q[i].append(taxi)
+					else:
+						#not fully charged, send it back to the charging q
+						self.taxi_in_charge[i].append(taxi)
 
 
 	#4: determine if the taxi arrive at destination
 	def taxi_arrive(self):
 		ntaxi=len(self.taxi_in_travel)
-		for i in range(len(ntaxi)):
-			taxi=self.taxi_in_travel.pop() 
-			if taxi.time_to_destination<=0: 
-				#arrived
-				if taxi.battery>=0.2*taxi.max_battery:
-					self.taxi_in_q[taxi.destination].append(taxi) #add this taxi to the stands at destination
+		for i in range(ntaxi):
+			if self.taxi_in_travel:
+				taxi=self.taxi_in_travel.pop()
+				if taxi.time_to_destination<=0:
+					#arrived
+					if taxi.battery>=0.2*taxi.max_battery:
+						self.taxi_in_q[taxi.destination].append(taxi) #add this taxi to the stands at destination
+					else:
+						self.taxi_in_charge[taxi.destination].append(taxi)
+
+					taxi.arrived()
 				else:
-					self.taxi_in_charge[taxi.destination].append(taxi)
-				
-				taxi.arrived()
-			else:
-				#still in travel, send this taxi back to the travel list
-				self.taxi_in_travel.append(taxi) 
+					#still in travel, send this taxi back to the travel list
+					self.taxi_in_travel.append(taxi)
 
 
 
@@ -149,7 +154,7 @@ class taxi_simulator():
 		for i in range(self.N):
 			#update waiting time of existing passengers
 			#also determine if the passengers will leave
-			self.passenger_qtime[i]+=util.waiting_time_update(self.passenger_qtime[i])
+			self.passenger_qtime[i]=util.waiting_time_update(self.passenger_qtime[i])
 			#new passengers
 			n_pass_arrive=np.random.poisson(self.arrival_rate[i])
 			#add passengers to the queue
@@ -166,14 +171,15 @@ class taxi_simulator():
 				#serve passenger
 				if len(self.passenger_qtime[i])>0:
 					self.passenger_qtime[i].pop() #remove the first passenger
-					taxi=self.taxi_in_q[i].pop() #remove the first taxi in q
-					#first determine if the destination of the passenger
-					destination=np.random.choice(self.station_list,1,p=self.OD_split[i])[0]
-					time_to_destination=self.travel_time[i][destination]
-					distance_to_destination=self.distance[i][destination]
-					taxi.trip(i,destination,time_to_destination,distance_to_destination)
-					#send this taxi to travel Q
-					self.taxi_in_travel.append(taxi)
+					if self.taxi_in_q[i]:
+						taxi=self.taxi_in_q[i].pop() #remove the first taxi in q
+						#first determine if the destination of the passenger
+						destination=np.random.choice(self.station_list,1,self.OD_split[i])[0]
+						time_to_destination=self.travel_time[i][destination]
+						distance_to_destination=self.distance[i][destination]
+						taxi.trip(i,destination,time_to_destination,distance_to_destination)
+						#send this taxi to travel Q
+						self.taxi_in_travel.append(taxi)
 				else:
 					#no available passengers, break the loop
 					break

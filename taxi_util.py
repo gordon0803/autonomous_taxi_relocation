@@ -8,7 +8,7 @@ import math
 import random
 #update the waiting time of passengers in Q
 
-def waiting_time_update(waiting_time,leave_prob):
+def waiting_time_update(waiting_time):
 	#input is the list of waiting time
 	new_wait=[]
 
