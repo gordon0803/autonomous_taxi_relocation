@@ -8,6 +8,7 @@ import numpy as np
 import random as rd
 import taxi_util as util
 from collections import deque
+from numba import jit
 
 
 class taxi_agent():
@@ -36,7 +37,6 @@ class taxi_agent():
         self.idle = True
         self.destination = None
         self.time_to_destination = 0
-
 
 class taxi_simulator():
     def __init__(self, arrival_rate, OD_mat, dist_mat, time_mat, taxi_input):

@@ -2,7 +2,7 @@
 ## Last Update: 2019-2-5
 
 #utility functions that will be used in the taxi_env
-
+from numba import jit
 import tensorflow as tf
 import math
 import random
