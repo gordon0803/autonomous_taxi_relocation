@@ -3,23 +3,36 @@
 
 #utility functions that will be used in the taxi_env
 
-
+import tensorflow as tf
 import math
 import random
+import numpy as np
+from collections import deque
 #update the waiting time of passengers in Q
 
-def waiting_time_update(waiting_time):
-	#input is the list of waiting time
-	new_wait=[]
+def waiting_time_update(waiting_time,expect_waiting_time):
+    (new_wait, new_expect_wait) = map(deque, zip(*[(i+1,j) for i,j in zip(waiting_time,expect_waiting_time) if i<j]))
+    return new_wait,new_expect_wait
 
-	#the list of leave probability based on the waiting time of passengers in the queue
-	leave_prob=[math.exp(i/6.0)/(math.exp(i/6.0)+1000000) for i in waiting_time];
 
-	for i in range(len(waiting_time)):
-		if random.random()>leave_prob[i]:
-			#the passenger will stay in the queue
-			time=waiting_time[i]+1
-			new_wait.append(time)
+def updateTarget(op_holder,sess):
+	for op in op_holder:
+		sess.run(op)
+	total_vars = len(tf.trainable_variables())
+	a = tf.trainable_variables()[0].eval(session=sess)
+	b = tf.trainable_variables()[total_vars//2].eval(session=sess)
+	if not a.all() == b.all():
+		print("Target Set Failed")
 
-	return new_wait
 
+def updateTargetGraph(tfVars,tau):
+	total_vars = len(tfVars)
+	op_holder = []
+	for idx,var in enumerate(tfVars[0:total_vars//2]):
+		op_holder.append(tfVars[idx+total_vars//2].assign((var.value()*tau) + ((1-tau)*tfVars[idx+total_vars//2].value())))
+	return op_holder
+
+
+def processState(state,Nstation):
+	#input is the N by N by 3 tuple, map it to a list
+	return np.reshape(state,[Nstation*Nstation*3])
