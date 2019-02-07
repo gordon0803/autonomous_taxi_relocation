@@ -16,6 +16,8 @@ from network import *
 
 import taxi_env as te
 import taxi_util as tu
+import DRQN_agent
+import network
 
 
 config = tf.ConfigProto()
@@ -24,7 +26,7 @@ session = tf.Session(config=config)
 
 #------------------Parameter setting-----------------------
 #define the input here
-N_station=80
+N_station=20
 l1=[5 for i in range(N_station)]
 OD_mat=[l1 for i in range(N_station)]
 distance=OD_mat
@@ -55,38 +57,18 @@ summaryLength = 100 #Number of epidoes to periodically save for analysis
 tau = 0.001
 
 episode_per_agent=50; #number of training episodes for every agent.
+
+
 #------------------Train the network-----------------------
 
 
 # DQN combined with LSTM
 # one DRQN per station is needed, different network requires a different scope (name)
-session_collection=[]
-mainQN=[]
-targetQN=[]
+stand_agent=[]
 # targetOps=[]
-for station in range(15):
-    tf.reset_default_graph()
-    g=tf.Graph()
-    with g.as_default():
-        # We define the cells for the primary and target q-networks
-        # LSTM First
-        cell = tf.contrib.rnn.BasicLSTMCell(num_units=h_size, state_is_tuple=True)
-        cellT = tf.contrib.rnn.BasicLSTMCell(num_units=h_size, state_is_tuple=True)
-        mainQN.append(Qnetwork(N_station, h_size, cell, 'main'+str(station)))
-        targetQN.append(Qnetwork(N_station, h_size, cellT, 'target'+str(station)))
-        init = tf.global_variables_initializer()
-        saver = tf.train.Saver(max_to_keep=5)
-        trainables = tf.trainable_variables()  # return the list of variables to train
-        targetOps=tu.updateTargetGraph(trainables, tau)  # match the variables of target network with the origin one
-        tempsess=tf.Session(graph=g)
-        tempsess.run(init) #initialize this session
-        tu.updateTarget(targetOps, tempsess)  # Set the target network to be equal to the primary network.
+for station in range(N_station):
+    stand_agent.append(DRQN_agent.drqn_agent(str(station),N_station,h_size,tau))
 
-        print('Network Initialized:',station)
-        session_collection.append(tempsess)
-
-myBuffer = [experience_buffer() for i in range(N_station)]
-print('Experience replay buffer initialized for each station')
 
 # Set the rate of random action decrease.
 e = startE
@@ -124,7 +106,7 @@ for i in range(num_episodes):
     # return the current state of the system
     sP, tempr = env.get_state()
     # process the state into a list
-    s = tu.processState(sP, N_station)
+    s = network.processState(sP, N_station)
 
     rAll = 0
     j = 0
@@ -132,8 +114,6 @@ for i in range(num_episodes):
     # We train one station in one single episode, and hold it unchanged for other stations, and we keep rotating.
     nn = i % N_station
     print(nn)
-
-    main_sess = session_collection[nn]
 
     # Reset the recurrent layer's hidden state
     state = (np.zeros([1, h_size]), np.zeros([1, h_size]))
@@ -144,20 +124,14 @@ for i in range(num_episodes):
         # Choose an action by greedily (with e chance of random action) from the Q-network
         a=[-1]*N_station;
         if np.random.rand(1) < e or total_steps < pre_train_steps:
-            state1 = main_sess.run(mainQN[nn].rnn_state, \
-                              feed_dict={mainQN[nn].scalarInput: [s], mainQN[nn].trainLength: 1, mainQN[nn].state_in: state,
-                                         mainQN[nn].batch_size: 1})
+            state1=stand_agent[nn].get_rnn_state(s,state)
             for station in range(N_station):
                 a[station]=np.random.randint(0, N_station) #random actions for each station
 
         else:
-            state1 = main_sess.run(mainQN[nn].rnn_state, \
-                              feed_dict={mainQN[nn].scalarInput: [s], mainQN[nn].trainLength: 1, mainQN[nn].state_in: state,
-                                         mainQN[nn].batch_size: 1})
+            state1 = stand_agent[nn].get_rnn_state(s,state)
             for station in range(N_station):
-                a1 = session_collection[station].run(mainQN[nn].predict, \
-                              feed_dict={mainQN[nn].scalarInput: [s], mainQN[nn].trainLength: 1, mainQN[nn].state_in: state,
-                                         mainQN[nn].batch_size: 1})
+                a1 = stand_agent[station].predict(s,state)
                 a[station]=a1[0] #action performed by DRQN
 
         # move to the next step based on action selected
@@ -165,7 +139,7 @@ for i in range(num_episodes):
         # get state and reward
         s1P, r = env.get_state()
         r = r / (taxi_input * N_station + 0.0000001)
-        s1 = tu.processState(s1P, N_station)
+        s1 = network.processState(s1P, N_station)
 
         total_steps += 1
 
@@ -179,27 +153,17 @@ for i in range(num_episodes):
             if e > endE:
                 e -= stepDrop
 
+
+            #We train the selected agent
+
             if total_steps % (update_freq) == 0:
-                tu.updateTarget(targetOps, main_sess)  # update the target Q networks
+                stand_agent[nn].update_target_net()
 
                 # Reset the recurrent layer's hidden state
                 state_train = (np.zeros([batch_size, h_size]), np.zeros([batch_size, h_size]))
-                trainBatch = myBuffer[nn].sample(batch_size, trace_length)  # Get a random batch of experiences.
+                trainBatch = stand_agent[nn].buffer.sample(batch_size, trace_length)  # Get a random batch of experiences.
                 # Below we perform the Double-DQN update to the target Q-values
-                Q1 = main_sess.run(mainQN[nn].predict, feed_dict={ \
-                    mainQN[nn].scalarInput: np.vstack(trainBatch[:, 3]), \
-                    mainQN[nn].trainLength: trace_length, mainQN[nn].state_in: state_train, mainQN[nn].batch_size: batch_size})
-                Q2 = main_sess.run(targetQN[nn].Qout, feed_dict={ \
-                    targetQN[nn].scalarInput: np.vstack(trainBatch[:, 3]), \
-                    targetQN[nn].trainLength: trace_length, targetQN[nn].state_in: state_train,
-                    targetQN[nn].batch_size: batch_size})
-                doubleQ = Q2[range(batch_size * trace_length), Q1]
-                targetQ = trainBatch[:, 2] + (y * doubleQ)
-                # Update the network with our target values.
-                main_sess.run(mainQN[nn].updateModel, \
-                         feed_dict={mainQN[nn].scalarInput: np.vstack(trainBatch[:, 0]), mainQN[nn].targetQ: targetQ, \
-                                    mainQN[nn].actions: trainBatch[:, 1], mainQN[nn].trainLength: trace_length, \
-                                    mainQN[nn].state_in: state_train, mainQN[nn].batch_size: batch_size})
+                stand_agent[nn].train(trainBatch,trace_length,state_train,batch_size)
 
         # update reward
         rAll += r
@@ -213,15 +177,15 @@ for i in range(num_episodes):
     for station in range(N_station):
         bufferArray = np.array(episodeBuffer[station])
         tempbuffer = list(zip(bufferArray))
-        myBuffer[station].add(tempbuffer)
+        stand_agent[station].remember(tempbuffer)
 
     jList.append(j)
     rList.append(rAll)  # reward in this episode
     print('Episode:', i, ', totalreward:', rAll)
     # Periodically save the model.
-    if i % 100 == 0 and i != 0:
-        saver.save(sess, path + '/model-' + str(i) + '.cptk')
-        print("Saved Model")
+    # if i % 100 == 0 and i != 0:
+    #     saver.save(sess, path + '/model-' + str(i) + '.cptk')
+    #     print("Saved Model")
     if len(rList) % summaryLength == 0 and len(rList) != 0:
         print(total_steps, np.mean(rList[-summaryLength:]), e)
 #             saveToCenter(i,rList,jList,np.reshape(np.array(episodeBuffer),[len(episodeBuffer),5]),\
