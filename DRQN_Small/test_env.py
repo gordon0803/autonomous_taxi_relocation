@@ -11,7 +11,7 @@ distance=OD_mat
 
 travel_time=OD_mat
 
-arrival_rate=[5 for i in range(N_station)]
+arrival_rate=[10 for i in range(N_station)]
 
 taxi_input=10
 

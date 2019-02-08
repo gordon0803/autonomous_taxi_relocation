@@ -37,15 +37,15 @@ class drqn_agent():
 
 
         #load model from path
-        if self.ckpt_path:
-            ckpt = tf.train.get_checkpoint_state(self.ckpt_path)
-            if ckpt and ckpt.model_checkpoint_path:
-                self.saver.restore(self.sess, ckpt.model_checkpoint_path)
-            else:
-                print("Cannot restore model, does not exist")
-                raise Exception
-        else:
-            self.sess.run(tf.global_variables_initializer())
+        # if self.ckpt_path:
+        #     ckpt = tf.train.get_checkpoint_state(self.ckpt_path)
+        #     if ckpt and ckpt.model_checkpoint_path:
+        #         self.saver.restore(self.sess, ckpt.model_checkpoint_path)
+        #     else:
+        #         print("Cannot restore model, does not exist")
+        #         raise Exception
+        # else:
+        #     self.sess.run(tf.global_variables_initializer())
 
         self.main_trainables=tf.trainable_variables(scope='Graph_'+self.name+'_main_network_'+self.name) #get the set of variables and then send to update target network
         self.trainables = tf.trainable_variables(scope='Graph_'+self.name)

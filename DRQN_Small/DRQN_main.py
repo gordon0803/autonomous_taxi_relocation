@@ -24,6 +24,7 @@ config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 session = tf.Session(config=config)
 
+reward_out=open('reward_log.csv','w')
 
 #------------------Parameter setting-----------------------
 #define the input here
@@ -33,27 +34,27 @@ OD_mat=[l1 for i in range(N_station)]
 distance=OD_mat
 travel_time=OD_mat
 arrival_rate=[0.5+i/4.0 for i in range(N_station)]
-taxi_input=5
+taxi_input=10
 
 env=te.taxi_simulator(arrival_rate,OD_mat,distance,travel_time,taxi_input)
 env.reset()
 print('System Successfully Initialized!')
 
 #Setting the training parameters
-batch_size = 4 #How many experience traces to use for each training step.
-trace_length = 8 #How long each experience trace will be when training
-update_freq = 5 #How often to perform a training step.
+batch_size = 8 #How many experience traces to use for each training step.
+trace_length = 20 #How long each experience trace will be when training
+update_freq = 10 #How often to perform a training step.
 y = .99 #Discount factor on the target Q-values
 startE = 1 #Starting chance of random action
 endE = 0.1 #Final chance of random action
-anneling_steps = 2000 #How many steps of training to reduce startE to endE.
-num_episodes = 1000 #How many episodes of game environment to train network with.
-pre_train_steps = 2000 #How many steps of random actions before training begins.
+anneling_steps = 500 #How many steps of training to reduce startE to endE.
+num_episodes = 500 #How many episodes of game environment to train network with.
+pre_train_steps = 4800 #How many steps of random actions before training begins.
 load_model = False #Whether to load a saved model.
 warmup_time=100;
 path = "./drqn" #The path to save our model to.
-h_size = 256 #The size of the final convolutional layer before splitting it into Advantage and Value streams.
-max_epLength = 500 #The max allowed length of our episode.
+h_size = 128 #The size of the final convolutional layer before splitting it into Advantage and Value streams.
+max_epLength = 600 #The max allowed length of our episode.
 time_per_step = 1 #Length of each step used in gif creation
 summaryLength = 100 #Number of epidoes to periodically save for analysis
 tau = 0.001
@@ -98,16 +99,16 @@ with tf.Session() as sess:
     # one DRQN per station is needed, different network requires a different scope (name)
     stand_agent = []
     # targetOps=[]
+
     for station in range(N_station):
         stand_agent.append(DRQN_agent.drqn_agent(str(station), N_station, h_size, tau,sess))
 
-
+    sess.run(tf.global_variables_initializer())
     for i in range(num_episodes):
         episodeBuffer = [[] for station in range(N_station)]
 
         # Reset environment and get first new observation
         env.reset()
-
         # return the current state of the system
         sP, tempr = env.get_state()
         # process the state into a list
@@ -163,7 +164,7 @@ with tf.Session() as sess:
                     e -= stepDrop
                 #We train the selected agent
                 if total_steps % (update_freq) == 0:
-                    if total_steps % 150 ==0: #update target network every 80 seconds
+                    if total_steps % 250 ==0: #update target network every 80 seconds
                         t1=time.time()
                         stand_agent[nn].update_target_net()
                         t2=time.time()-t1
@@ -193,13 +194,14 @@ with tf.Session() as sess:
         rList.append(rAll)  # reward in this episode
         print('Episode:', i, ', totalreward:', rAll)
 
+        reward_out.writelines(str(j)+','+str(rAll)+'\n')
 
         # Periodically save the model.
         # if i % 100 == 0 and i != 0:
         #     saver.save(sess, path + '/model-' + str(i) + '.cptk')
         #     print("Saved Model")
-        if len(rList) % summaryLength == 0 and len(rList) != 0:
-            print(total_steps, np.mean(rList[-summaryLength:]), e)
+        # if len(rList) % summaryLength == 0 and len(rList) != 0:
+        #     print(total_steps, np.mean(rList[-summaryLength:]), e)
     #             saveToCenter(i,rList,jList,np.reshape(np.array(episodeBuffer),[len(episodeBuffer),5]),\
 #                 summaryLength,h_size,sess,mainQN,time_per_step)
 # saver.save(sess,path+'/model-'+str(i)+'.cptk')

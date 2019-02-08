@@ -17,21 +17,21 @@ class Qnetwork():
 
         # create 4 convolution layers first
         self.conv1 = tf.nn.relu(tf.layers.conv2d( \
-            inputs=self.imageIn, filters=32, \
-            kernel_size=[4, 4], strides=[2, 2], padding='VALID', \
+            inputs=self.imageIn, filters=16, \
+            kernel_size=[4, 4], strides=[4, 4], padding='VALID', \
              name=myScope + '_net_conv1'),name=myScope+'_net_relu1')
         self.conv2 = tf.nn.relu(tf.layers.conv2d( \
-            inputs=self.conv1, filters=64, \
-            kernel_size=[3, 3], strides=[2, 2], padding='VALID', \
-             name=myScope + '_net_conv2'),name=myScope+'_net_relu2')
-        self.conv3 = tf.nn.relu(tf.layers.conv2d( \
-            inputs=self.conv2, filters=64, \
+            inputs=self.conv1, filters=32, \
             kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
-             name=myScope + '_net_conv3'),name=myScope+'_net_relu3')
-        self.conv4 = tf.nn.relu(tf.layers.conv2d( \
-            inputs=self.conv3, filters=64, \
-            kernel_size=[2, 2], strides=[4, 4], padding='VALID', \
-             name=myScope + '_net_conv4'),name=myScope+'_net_relu4')
+             name=myScope + '_net_conv2'),name=myScope+'_net_relu2')
+        # self.conv3 = tf.nn.relu(tf.layers.conv2d( \
+        #     inputs=self.conv2, filters=64, \
+        #     kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
+        #      name=myScope + '_net_conv3'),name=myScope+'_net_relu3')
+        # self.conv4 = tf.nn.relu(tf.layers.conv2d( \
+        #     inputs=self.conv3, filters=64, \
+        #     kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
+        #      name=myScope + '_net_conv4'),name=myScope+'_net_relu4')
 
 
 
@@ -40,7 +40,7 @@ class Qnetwork():
         # The input must be reshaped into [batch x trace x units] for rnn processing,
         # and then returned to [batch x units] when sent through the upper levles.
         self.batch_size = tf.placeholder(dtype=tf.int32, shape=[])
-        self.convFlat = tf.reshape(slim.flatten(self.conv3), [self.batch_size, self.trainLength, h_size])
+        self.convFlat = tf.reshape(slim.flatten(self.conv2), [self.batch_size, self.trainLength, h_size])
         self.state_in = rnn_cell.zero_state(self.batch_size, tf.float32)
         self.rnn, self.rnn_state = tf.nn.dynamic_rnn( \
             inputs=self.convFlat, cell=rnn_cell, dtype=tf.float32, initial_state=self.state_in, scope=myScope + '_net_rnn')
@@ -79,7 +79,7 @@ class Qnetwork():
 
 
 class experience_buffer():
-    def __init__(self, buffer_size=1000):
+    def __init__(self, buffer_size=20):
         self.buffer = []
         self.buffer_size = buffer_size
 
@@ -103,11 +103,10 @@ class experience_buffer():
 
 #functions
 def updateTarget(op_holder,sess):
-    for op in op_holder:
-        sess.run(op)
-    total_vars = len(tf.trainable_variables())
-    a = tf.trainable_variables()[0].eval(session=sess)
-    b = tf.trainable_variables()[total_vars//2].eval(session=sess)
+    sess.run(op_holder)
+    # total_vars = len(tf.trainable_variables())
+    # a = tf.trainable_variables()[0].eval(session=sess)
+    # b = tf.trainable_variables()[total_vars//2].eval(session=sess)
     # if not a.all() == b.all():
     #     print("Target Set Failed")
     # else:
