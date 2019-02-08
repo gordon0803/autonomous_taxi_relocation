@@ -16,23 +16,24 @@ class Qnetwork():
         self.imageIn = tf.reshape(self.scalarInput, shape=[-1, N_station, N_station, 3])
 
         # create 4 convolution layers first
-
         self.conv1 = tf.nn.relu(tf.layers.conv2d( \
             inputs=self.imageIn, filters=32, \
             kernel_size=[4, 4], strides=[2, 2], padding='VALID', \
-             name=myScope + '_conv1'))
-        self.conv2 = tf.layers.conv2d( \
+             name=myScope + '_net_conv1'),name=myScope+'_net_relu1')
+        self.conv2 = tf.nn.relu(tf.layers.conv2d( \
             inputs=self.conv1, filters=64, \
             kernel_size=[3, 3], strides=[2, 2], padding='VALID', \
-             name=myScope + '_conv2')
-        self.conv3 = tf.layers.conv2d( \
+             name=myScope + '_net_conv2'),name=myScope+'_net_relu2')
+        self.conv3 = tf.nn.relu(tf.layers.conv2d( \
             inputs=self.conv2, filters=64, \
             kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
-             name=myScope + '_conv3')
-        self.conv4 = tf.layers.conv2d( \
+             name=myScope + '_net_conv3'),name=myScope+'_net_relu3')
+        self.conv4 = tf.nn.relu(tf.layers.conv2d( \
             inputs=self.conv3, filters=64, \
             kernel_size=[2, 2], strides=[4, 4], padding='VALID', \
-             name=myScope + '_conv4')
+             name=myScope + '_net_conv4'),name=myScope+'_net_relu4')
+
+
 
         self.trainLength = tf.placeholder(dtype=tf.int32)
         # We take the output from the final convolutional layer and send it to a recurrent layer.
@@ -42,7 +43,7 @@ class Qnetwork():
         self.convFlat = tf.reshape(slim.flatten(self.conv3), [self.batch_size, self.trainLength, h_size])
         self.state_in = rnn_cell.zero_state(self.batch_size, tf.float32)
         self.rnn, self.rnn_state = tf.nn.dynamic_rnn( \
-            inputs=self.convFlat, cell=rnn_cell, dtype=tf.float32, initial_state=self.state_in, scope=myScope + '_rnn')
+            inputs=self.convFlat, cell=rnn_cell, dtype=tf.float32, initial_state=self.state_in, scope=myScope + '_net_rnn')
         self.rnn = tf.reshape(self.rnn, shape=[-1, h_size])
         # The output from the recurrent player is then split into separate Value and Advantage streams
         self.streamA, self.streamV = tf.split(self.rnn, 2, 1)
@@ -102,26 +103,28 @@ class experience_buffer():
 
 #functions
 def updateTarget(op_holder,sess):
-	for op in op_holder:
-		sess.run(op)
-	total_vars = len(tf.trainable_variables())
-	a = tf.trainable_variables()[0].eval(session=sess)
-	b = tf.trainable_variables()[total_vars//2].eval(session=sess)
-	if not a.all() == b.all():
-		print("Target Set Failed")
+    for op in op_holder:
+        sess.run(op)
+    total_vars = len(tf.trainable_variables())
+    a = tf.trainable_variables()[0].eval(session=sess)
+    b = tf.trainable_variables()[total_vars//2].eval(session=sess)
+    # if not a.all() == b.all():
+    #     print("Target Set Failed")
+    # else:
+    #     print("Target set Success")
 
 
 def updateTargetGraph(tfVars,tau):
-	total_vars = len(tfVars)
-	op_holder = []
-	for idx,var in enumerate(tfVars[0:total_vars//2]):
-		op_holder.append(tfVars[idx+total_vars//2].assign((var.value()*tau) + ((1-tau)*tfVars[idx+total_vars//2].value())))
-	return op_holder
+    total_vars = len(tfVars)
+    op_holder = []
+    for idx,var in enumerate(tfVars[0:total_vars//2]):
+        op_holder.append(tfVars[idx+total_vars//2].assign((var.value()*tau) + ((1-tau)*tfVars[idx+total_vars//2].value())))
+    return op_holder
 
 
 def processState(state,Nstation):
-	#input is the N by N by 3 tuple, map it to a list
-	return np.reshape(state,[Nstation*Nstation*3])
+    #input is the N by N by 3 tuple, map it to a list
+    return np.reshape(state,[Nstation*Nstation*3])
 
 
 def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", dtype=tf.float32, collections=None):

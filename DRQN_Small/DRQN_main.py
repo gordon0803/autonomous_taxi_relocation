@@ -24,6 +24,7 @@ config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 session = tf.Session(config=config)
 
+
 #------------------Parameter setting-----------------------
 #define the input here
 N_station=20
@@ -31,8 +32,8 @@ l1=[5 for i in range(N_station)]
 OD_mat=[l1 for i in range(N_station)]
 distance=OD_mat
 travel_time=OD_mat
-arrival_rate=[3 for i in range(N_station)]
-taxi_input=6
+arrival_rate=[0.5+i/4.0 for i in range(N_station)]
+taxi_input=5
 
 env=te.taxi_simulator(arrival_rate,OD_mat,distance,travel_time,taxi_input)
 env.reset()
@@ -45,13 +46,14 @@ update_freq = 5 #How often to perform a training step.
 y = .99 #Discount factor on the target Q-values
 startE = 1 #Starting chance of random action
 endE = 0.1 #Final chance of random action
-anneling_steps = 10000 #How many steps of training to reduce startE to endE.
+anneling_steps = 2000 #How many steps of training to reduce startE to endE.
 num_episodes = 1000 #How many episodes of game environment to train network with.
 pre_train_steps = 2000 #How many steps of random actions before training begins.
 load_model = False #Whether to load a saved model.
+warmup_time=100;
 path = "./drqn" #The path to save our model to.
 h_size = 256 #The size of the final convolutional layer before splitting it into Advantage and Value streams.
-max_epLength = 200 #The max allowed length of our episode.
+max_epLength = 500 #The max allowed length of our episode.
 time_per_step = 1 #Length of each step used in gif creation
 summaryLength = 100 #Number of epidoes to periodically save for analysis
 tau = 0.001
@@ -99,6 +101,7 @@ with tf.Session() as sess:
     for station in range(N_station):
         stand_agent.append(DRQN_agent.drqn_agent(str(station), N_station, h_size, tau,sess))
 
+
     for i in range(num_episodes):
         episodeBuffer = [[] for station in range(N_station)]
 
@@ -125,24 +128,17 @@ with tf.Session() as sess:
             # for all the stations, act greedily
             # Choose an action by greedily (with e chance of random action) from the Q-network
 
-            a=[-1]*N_station;
+            a=[-1]*N_station
+
             if np.random.rand(1) < e or total_steps < pre_train_steps:
-                t1=time.time()
                 state1=stand_agent[nn].get_rnn_state(s,state)
                 for station in range(N_station):
                     a[station]=np.random.randint(0, N_station) #random actions for each station
-                t2 = time.time() - t1;
-                print('Episode:', i, 'Step:', j, 'Decision made (random) in:', t2, 's')
-
-
             else:
-                t1=time.time()
                 state1 = stand_agent[nn].get_rnn_state(s,state)
                 for station in range(N_station):
                     a1 = stand_agent[station].predict(s,state)
                     a[station]=a1[0] #action performed by DRQN
-                t2 = time.time() - t1;
-                print('Episode:', i, 'Step:', j, 'Decision made (DRQN) in:', t2, 's')
 
 
             # move to the next step based on action selected
@@ -157,27 +153,26 @@ with tf.Session() as sess:
 
             # episode buffer
             # we don't store the initial 200 steps of the simulation, as warm up periods
-            for station in range(N_station):
-                episodeBuffer[station].append(np.reshape(np.array([s, a[station], r, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
+            if j>warmup_time:
+                for station in range(N_station):
+                    episodeBuffer[station].append(np.reshape(np.array([s, a[station], r, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
 
-            if total_steps > pre_train_steps:
+            if total_steps > pre_train_steps and j>warmup_time:
                 # start training here
                 if e > endE:
                     e -= stepDrop
                 #We train the selected agent
                 if total_steps % (update_freq) == 0:
-                    t1=time.time()
-                    stand_agent[nn].update_target_net()
-                    t2=time.time()-t1
-                    print('Episode:', i, 'Step:', j, 'Target Network Updated in:',t2,'s')
+                    if total_steps % 150 ==0: #update target network every 80 seconds
+                        t1=time.time()
+                        stand_agent[nn].update_target_net()
+                        t2=time.time()-t1
                     # Reset the recurrent layer's hidden state
                     state_train = (np.zeros([batch_size, h_size]), np.zeros([batch_size, h_size]))
                     trainBatch = stand_agent[nn].buffer.sample(batch_size, trace_length)  # Get a random batch of experiences.
                     # Below we perform the Double-DQN update to the target Q-values
-                    t1 = time.time()
                     stand_agent[nn].train(trainBatch,trace_length,state_train,batch_size)
-                    t2 = time.time() - t1
-                    print('Episode:', i, 'Step:', j, 'Agent Trained in',t2,'s')
+
 
             # update reward
             rAll += r
@@ -196,6 +191,8 @@ with tf.Session() as sess:
         jList.append(j)
         rList.append(rAll)  # reward in this episode
         print('Episode:', i, ', totalreward:', rAll)
+
+
         # Periodically save the model.
         # if i % 100 == 0 and i != 0:
         #     saver.save(sess, path + '/model-' + str(i) + '.cptk')

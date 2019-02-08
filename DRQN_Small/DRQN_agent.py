@@ -6,7 +6,7 @@ import os
 import numpy as np
 import tensorflow as tf
 import network
-
+import time
 
 class drqn_agent():
     def __init__(self,name,N_station,h_size,tau,sess,ckpt_path=None):
@@ -24,12 +24,12 @@ class drqn_agent():
     def drqn_build(self,N_station,h_size,tau):
         #construct the DRQN for each agent
 
-        self.cell = tf.contrib.rnn.LSTMBlockCell(num_units=h_size,name='main_lstm'+self.name)
-        self.cellT = tf.contrib.rnn.LSTMBlockCell(num_units=h_size,name='target_lstm'+self.name)
+        self.cell = tf.contrib.rnn.LSTMBlockCell(num_units=h_size,name='Graph_'+self.name+'_main_network_'+self.name)
+        self.cellT = tf.contrib.rnn.LSTMBlockCell(num_units=h_size,name='Graph_'+self.name+'_target_network_'+self.name)
 
         #build main and target network
-        self.mainQN = network.Qnetwork(N_station, h_size, self.cell, 'main_network_'+self.name)
-        self.targetQN = network.Qnetwork(N_station, h_size, self.cell, 'target_network_' + self.name)
+        self.mainQN = network.Qnetwork(N_station, h_size, self.cell, 'Graph_'+self.name+'_main_network_'+self.name)
+        self.targetQN = network.Qnetwork(N_station, h_size, self.cellT, 'Graph_'+self.name+'_target_network_' + self.name)
 
 
         #saver
@@ -47,10 +47,13 @@ class drqn_agent():
         else:
             self.sess.run(tf.global_variables_initializer())
 
-        self.trainables=tf.trainable_variables() #get the set of variables and then send to update target network
+        self.main_trainables=tf.trainable_variables(scope='Graph_'+self.name+'_main_network_'+self.name) #get the set of variables and then send to update target network
+        self.trainables = tf.trainable_variables(scope='Graph_'+self.name)
+        self.target_trainables=tf.trainable_variables(scope='Graph_'+self.name+'_target_network_'+self.name)
+
         #store the name and initial values for target network
-        # self.targetOps=network.updateTargetGraph(self.trainables,tau)
-        self.update_target_net()
+        self.targetOps=network.updateTargetGraph(self.trainables,tau)
+        # self.update_target_net()
 
         print("Agent network initialization complete, Agent name:",self.name)
 
@@ -63,19 +66,21 @@ class drqn_agent():
           estimator1: Estimator to copy the paramters from
           estimator2: Estimator to copy the parameters to
         """
-        e1_params = [t for t in tf.trainable_variables() if t.name.startswith('main_network_'+self.name)]
-        e1_params = sorted(e1_params, key=lambda v: v.name)
-        e2_params = [t for t in tf.trainable_variables() if t.name.startswith('target_network_'+self.name)]
-        e2_params = sorted(e2_params, key=lambda v: v.name)
+        # e1_params = [t for t in tf.trainable_variables(scope='main_network_'+self.name) if t.name.startswith('main_network_'+self.name)]
+        # e1_params = sorted(e1_params, key=lambda v: v.name)
+        # e2_params = [t for t in tf.trainable_variables(scope='target_network_'+self.name) if t.name.startswith('target_network_'+self.name)]
+        # e2_params = sorted(e2_params, key=lambda v: v.name)
 
-        update_ops = []
-        for e1_v, e2_v in zip(e1_params, e2_params):
-            op = e2_v.assign(e1_v)
-            update_ops.append(op)
+        # e1_params = sorted(self.main_trainables, key=lambda v: v.name)
+        # e2_params = sorted(self.target_trainables, key=lambda v: v.name)
+        # update_ops = []
+        # for e1_v, e2_v in zip(e1_params, e2_params):
+        #     op = e2_v.assign(e1_v)
+        #     update_ops.append(op)
+        # print(update_ops)
+        # self.sess.run(update_ops)
 
-        self.sess.run(update_ops)
-
-        # network.updateTarget(self.targetOps,self.sess)
+        network.updateTarget(self.targetOps,self.sess)
 
     def predict(self,s,state):
         #make the prediction
@@ -97,7 +102,7 @@ class drqn_agent():
         Q1=self.sess.run(self.mainQN.predict, feed_dict={ \
             self.mainQN.scalarInput: np.vstack(trainBatch[:, 3]),self.mainQN.trainLength: trace_length,\
             self.mainQN.state_in: state_train, self.mainQN.batch_size: batch_size})
-        #Use target network to evaluate output
+        #Use target network to evaluate outputred
         Q2 = self.sess.run(self.targetQN.Qout, feed_dict={ \
             self.targetQN.scalarInput: np.vstack(trainBatch[:, 3]), \
             self.targetQN.trainLength: trace_length, self.targetQN.state_in: state_train, self.targetQN.batch_size: batch_size})

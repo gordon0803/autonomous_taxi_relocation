@@ -164,9 +164,7 @@ class taxi_simulator():
             # update waiting time of existing passengers
             # also determine if the passengers will leave
             if self.passenger_qtime[i]:
-                self.passenger_qtime[i], self.passenger_expect_wait[i] = util.waiting_time_update(self.passenger_qtime[i],
-                                                                                              self.passenger_expect_wait[
-                                                                                                  i])
+                self.passenger_qtime[i], self.passenger_expect_wait[i] = util.waiting_time_update(self.passenger_qtime[i],self.passenger_expect_wait[i])
             # new passengers
             n_pass_arrive = np.random.poisson(self.arrival_rate[i])
             destination = np.random.choice(self.station_list, n_pass_arrive, self.OD_split[i]).tolist()
