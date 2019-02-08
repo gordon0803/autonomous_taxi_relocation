@@ -174,8 +174,9 @@ with tf.Session() as sess:
                     stand_agent[nn].train(trainBatch,trace_length,state_train,batch_size)
 
 
-            # update reward
-            rAll += r
+            # update reward after the warm up period
+            if j>warmup_time:
+                rAll += r
 
             # swap state
             s = s1
