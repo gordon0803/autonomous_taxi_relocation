@@ -274,8 +274,9 @@ class taxi_simulator():
             incoming_taxi[t.destination]+=1
 
         for t in self.taxi_in_relocation:
-            taxi_in_relocation[t.origin, t.destination] += 1
-            incoming_taxi[t.destination]+=1
+            if not t.origin==t.destination:  #self relocation will not count, viewed as stay
+                taxi_in_relocation[t.origin, t.destination] += 1
+                incoming_taxi[t.destination]+=1
 
         #normalize for taxis
         taxi_in_travel=taxi_in_travel/self.total_taxi;

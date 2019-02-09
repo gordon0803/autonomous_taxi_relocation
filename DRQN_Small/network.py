@@ -18,7 +18,7 @@ class Qnetwork():
         # create 4 convolution layers first
         self.conv1 = tf.layers.conv2d( \
             inputs=self.imageIn, filters=32, \
-            kernel_size=[5, 5], strides=[3, 3], padding='VALID', \
+            kernel_size=[4, 4], strides=[3, 3], padding='VALID', \
              name=myScope + '_net_conv1')
         self.conv2 = tf.layers.conv2d( \
             inputs=self.conv1, filters=64, \
@@ -109,7 +109,7 @@ def updateTargetGraph(tfVars,tau):
     total_vars = len(tfVars)
     op_holder = []
     for idx,var in enumerate(tfVars[0:total_vars//2]):
-        op_holder.append(tfVars[idx+total_vars//2].assign((var.value()*tau) + ((1-tau)*tfVars[idx+total_vars//2].value())))
+        op_holder.append(tfVars[idx+total_vars//2].assign((var.value()*tau) + ((1-tau)*tfVars[idx+total_vars//2].value()))) #tau*main_network + (1-tau)*target network, soft update
     return op_holder
 
 

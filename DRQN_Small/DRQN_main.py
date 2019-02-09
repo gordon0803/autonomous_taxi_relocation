@@ -181,8 +181,7 @@ with tf.Session() as sess:
                     e -= stepDrop
                 #We train the selected agent
                 if total_steps % (update_freq) == 0:
-                    if total_steps % 1500 ==0: #update target network every 80 seconds
-                        stand_agent[nn].update_target_net()
+                    stand_agent[nn].update_target_net() #soft update target network
 
                     # Reset the recurrent layer's hidden state
                     state_train = (np.zeros([batch_size, h_size]), np.zeros([batch_size, h_size]))
