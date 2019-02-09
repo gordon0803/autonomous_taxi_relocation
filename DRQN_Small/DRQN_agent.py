@@ -89,6 +89,13 @@ class drqn_agent():
 
         return action
 
+
+    def predict_softmax(self,s,state):
+        Qdist = self.sess.run(self.mainQN.Qout, feed_dict={ \
+            self.mainQN.scalarInput: [s], \
+            self.mainQN.trainLength: 1, self.mainQN.state_in: state, self.mainQN.batch_size: 1})
+        return Qdist
+
     def get_rnn_state(self,s,state):
         state1=self.sess.run(self.mainQN.rnn_state, feed_dict={self.mainQN.scalarInput: [s], self.mainQN.trainLength: 1, \
                                                               self.mainQN.state_in: state, self.mainQN.batch_size: 1})

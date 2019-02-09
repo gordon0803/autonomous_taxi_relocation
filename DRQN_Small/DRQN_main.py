@@ -19,47 +19,57 @@ import taxi_util as tu
 import DRQN_agent
 import network
 import time
+from sklearn.utils.extmath import softmax
+import math
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
 session = tf.Session(config=config)
 
-reward_out=open('reward_log.csv','w')
+reward_out=open('reward_log.csv', 'w+')
 
 #------------------Parameter setting-----------------------
-#define the input here
 N_station=20
 l1=[5 for i in range(N_station)]
 OD_mat=[l1 for i in range(N_station)]
 distance=OD_mat
-travel_time=OD_mat
+for i in range(N_station):
+        distance[i][i] = 0;
+        for j in range(N_station):
+            distance[i][j]=math.ceil(abs(j-i)/2);
+
+travel_time=distance
 arrival_rate=[0.5+i/4.0 for i in range(N_station)]
 taxi_input=10
+
 
 env=te.taxi_simulator(arrival_rate,OD_mat,distance,travel_time,taxi_input)
 env.reset()
 print('System Successfully Initialized!')
 
 #Setting the training parameters
-batch_size = 8 #How many experience traces to use for each training step.
-trace_length = 20 #How long each experience trace will be when training
-update_freq = 10 #How often to perform a training step.
+batch_size = 32 #How many experience traces to use for each training step.
+trace_length = 10 #How long each experience trace will be when training
+update_freq = 5 #How often to perform a training step.
 y = .99 #Discount factor on the target Q-values
 startE = 1 #Starting chance of random action
-endE = 0.1 #Final chance of random action
-anneling_steps = 500 #How many steps of training to reduce startE to endE.
-num_episodes = 500 #How many episodes of game environment to train network with.
-pre_train_steps = 4800 #How many steps of random actions before training begins.
+endE = 0.02 #Final chance of random action
+anneling_steps =180 #How many steps of training to reduce startE to endE.
+num_episodes = 1000 #How many episodes of game environment to train network with.
 load_model = False #Whether to load a saved model.
 warmup_time=100;
 path = "./drqn" #The path to save our model to.
-h_size = 128 #The size of the final convolutional layer before splitting it into Advantage and Value streams.
-max_epLength = 600 #The max allowed length of our episode.
+h_size = 576 #The size of the final convolutional layer before splitting it into Advantage and Value streams.
+max_epLength = 3000 #The max allowed length of our episode.
 time_per_step = 1 #Length of each step used in gif creation
+pre_train_steps = max_epLength*10 #How many steps of random actions before training begins.
 summaryLength = 100 #Number of epidoes to periodically save for analysis
 tau = 0.001
 
+softmax_action=False;
+
 episode_per_agent=50; #number of training episodes for every agent.
+
 
 
 #------------------Train the network-----------------------
@@ -110,7 +120,7 @@ with tf.Session() as sess:
         # Reset environment and get first new observation
         env.reset()
         # return the current state of the system
-        sP, tempr = env.get_state()
+        sP, tempr,temprp = env.get_state()
         # process the state into a list
         s = network.processState(sP, N_station)
 
@@ -131,23 +141,35 @@ with tf.Session() as sess:
 
             a=[-1]*N_station
 
-            if np.random.rand(1) < e or total_steps < pre_train_steps:
-                state1=stand_agent[nn].get_rnn_state(s,state)
+            if softmax_action==True:  #use softmax
+                state1 = stand_agent[nn].get_rnn_state(s, state)
                 for station in range(N_station):
-                    a[station]=np.random.randint(0, N_station) #random actions for each station
-            else:
-                state1 = stand_agent[nn].get_rnn_state(s,state)
-                for station in range(N_station):
-                    a1 = stand_agent[station].predict(s,state)
-                    a[station]=a1[0] #action performed by DRQN
+                    Qdist = stand_agent[station].predict_softmax(s, state)
+                    Qprob=softmax(Qdist);
+                    a1_v=np.random.choice(Qprob[0],p=Qprob[0])
+                    a1=np.argmax(Qprob[0] == a1_v)
+                    a[station] = a1  # action performed by DRQN
+
+
+            else: #use e-greedy
+                if np.random.rand(1) < e or total_steps < pre_train_steps:
+                    state1=stand_agent[nn].get_rnn_state(s,state)
+                    for station in range(N_station):
+                        a[station]=np.random.randint(0, N_station) #random actions for each station
+                else:
+                    state1 = stand_agent[nn].get_rnn_state(s,state)
+                    for station in range(N_station):
+                        a1 = stand_agent[station].predict(s,state)
+                        a[station]=a1[0] #action performed by DRQN
 
 
             # move to the next step based on action selected
             env.step(a)
 
             # get state and reward
-            s1P, r = env.get_state()
-            r = r / (taxi_input * N_station + 0.0000001)
+            s1P, r,rp = env.get_state()
+            r = r
+            rp=rp/(taxi_input * N_station )
             s1 = network.processState(s1P, N_station)
 
             total_steps += 1
@@ -156,7 +178,10 @@ with tf.Session() as sess:
             # we don't store the initial 200 steps of the simulation, as warm up periods
             if j>warmup_time:
                 for station in range(N_station):
-                    episodeBuffer[station].append(np.reshape(np.array([s, a[station], r, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
+
+                    #we penalize the reward to motivate long term benefits
+                    newr=r-rp[a[station]]  #system reward - incoming taxis + awaiting passengers
+                    episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
 
             if total_steps > pre_train_steps and j>warmup_time:
                 # start training here
@@ -164,7 +189,7 @@ with tf.Session() as sess:
                     e -= stepDrop
                 #We train the selected agent
                 if total_steps % (update_freq) == 0:
-                    if total_steps % 250 ==0: #update target network every 80 seconds
+                    if total_steps % 1500 ==0: #update target network every 80 seconds
                         t1=time.time()
                         stand_agent[nn].update_target_net()
                         t2=time.time()-t1
@@ -194,7 +219,7 @@ with tf.Session() as sess:
         rList.append(rAll)  # reward in this episode
         print('Episode:', i, ', totalreward:', rAll)
 
-        reward_out.writelines(str(j)+','+str(rAll)+'\n')
+        reward_out.write(str(j)+','+str(rAll)+'\n')
 
         # Periodically save the model.
         # if i % 100 == 0 and i != 0:

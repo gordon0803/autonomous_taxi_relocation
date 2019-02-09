@@ -76,6 +76,8 @@ class taxi_simulator():
         if not isinstance(taxi_input, list):
             taxi_input = [taxi_input for i in range(self.N)]  # convert it to a list
 
+        self.total_taxi=sum(taxi_input)
+
         for i in range(self.N):
             for t in range(taxi_input[i]):
                 taxi = taxi_agent(200)  # battery is set to 200 here
@@ -132,7 +134,7 @@ class taxi_simulator():
             for j in range(len(self.taxi_in_charge[i])):
                 if self.taxi_in_charge[i]:
                     taxi = self.taxi_in_charge[i].popleft()
-                    taxi.battery += 0.005 * taxi.max_battery  # every time step, 0.5% of battery get charged
+                    taxi.battery += 0.2 * taxi.max_battery  # every time step, 0.5% of battery get charged
                     if taxi.battery >= taxi.max_battery:
                         taxi.battery = taxi.max_battery
                         self.taxi_in_q[i].append(taxi)
@@ -247,19 +249,33 @@ class taxi_simulator():
     def get_state(self):
         # give the states of the system after all the executions
         # the state of the system is a 3 N by N matrix
+        max_passenger=50;
         state = np.ones([self.N, self.N, 3])
         passenger_gap = np.zeros((self.N, self.N))
         taxi_in_travel = np.zeros((self.N, self.N))
         taxi_in_relocation = np.zeros((self.N, self.N))
 
+        incoming_taxi=np.array([0]*self.N)
+        awaiting_pass=np.array([0]*self.N)
+
         for i in range(self.N):
-            passenger_gap[i, i] = len(self.passenger_qtime[i])
+            passenger_gap[i, i] = max(len(self.passenger_qtime[i]),50)/50
+            awaiting_pass[i]=len(self.passenger_qtime[i])
 
         for t in self.taxi_in_travel:
             taxi_in_travel[t.origin, t.destination] += 1
+            incoming_taxi[t.destination]+=1
 
         for t in self.taxi_in_relocation:
             taxi_in_relocation[t.origin, t.destination] += 1
+            incoming_taxi[t.destination]+=1
+
+        #normalize for taxis
+        taxi_in_travel=taxi_in_travel/self.total_taxi;
+        taxi_in_relocation=taxi_in_relocation/self.total_taxi;
+
+
+        #all states are within 0-1, continuous value
 
         state[:, :, 0] = passenger_gap;
         state[:, :, 1] = taxi_in_travel;
@@ -269,4 +285,8 @@ class taxi_simulator():
         total_taxi_in_relocation = taxi_in_relocation.sum()
         reward = total_taxi_in_travel - total_taxi_in_relocation
 
-        return state, reward
+
+        #penalty reward
+        reward_penalty=incoming_taxi-awaiting_pass
+
+        return state, reward, reward_penalty

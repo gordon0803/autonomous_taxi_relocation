@@ -16,18 +16,15 @@ class Qnetwork():
         self.imageIn = tf.reshape(self.scalarInput, shape=[-1, N_station, N_station, 3])
 
         # create 4 convolution layers first
-        self.conv1 = tf.nn.relu(tf.layers.conv2d( \
-            inputs=self.imageIn, filters=16, \
-            kernel_size=[4, 4], strides=[4, 4], padding='VALID', \
-             name=myScope + '_net_conv1'),name=myScope+'_net_relu1')
-        self.conv2 = tf.nn.relu(tf.layers.conv2d( \
-            inputs=self.conv1, filters=32, \
+        self.conv1 = tf.layers.conv2d( \
+            inputs=self.imageIn, filters=32, \
+            kernel_size=[5, 5], strides=[3, 3], padding='VALID', \
+             name=myScope + '_net_conv1')
+        self.conv2 = tf.layers.conv2d( \
+            inputs=self.conv1, filters=64, \
             kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
-             name=myScope + '_net_conv2'),name=myScope+'_net_relu2')
-        # self.conv3 = tf.nn.relu(tf.layers.conv2d( \
-        #     inputs=self.conv2, filters=64, \
-        #     kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
-        #      name=myScope + '_net_conv3'),name=myScope+'_net_relu3')
+             name=myScope + '_net_conv2')
+
         # self.conv4 = tf.nn.relu(tf.layers.conv2d( \
         #     inputs=self.conv3, filters=64, \
         #     kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
@@ -55,7 +52,9 @@ class Qnetwork():
         self.salience = tf.gradients(self.Advantage, self.imageIn)
         # Then combine them together to get our final Q-values.
         self.Qout = self.Value + tf.subtract(self.Advantage, tf.reduce_mean(self.Advantage, axis=1, keep_dims=True))
+
         self.predict = tf.argmax(self.Qout, 1)
+
 
         # Below we obtain the loss by taking the sum of squares difference between the target and prediction Q values.
         self.targetQ = tf.placeholder(shape=[None], dtype=tf.float32)
@@ -79,7 +78,7 @@ class Qnetwork():
 
 
 class experience_buffer():
-    def __init__(self, buffer_size=20):
+    def __init__(self, buffer_size=25):
         self.buffer = []
         self.buffer_size = buffer_size
 
@@ -89,7 +88,9 @@ class experience_buffer():
         self.buffer.append(experience)
 
     def sample(self, batch_size, trace_length):
-        sampled_episodes = random.sample(self.buffer, batch_size)
+        sampled_episodes=[]
+        for i in range(batch_size):
+            sampled_episodes.append(random.choice(self.buffer))
         sampledTraces = []
         for episode in sampled_episodes:
             point = np.random.randint(0, len(episode) + 1 - trace_length)
