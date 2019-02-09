@@ -24,8 +24,8 @@ class drqn_agent():
     def drqn_build(self,N_station,h_size,tau):
         #construct the DRQN for each agent
 
-        self.cell = tf.contrib.rnn.LSTMBlockCell(num_units=h_size,name='Graph_'+self.name+'_main_network_'+self.name)
-        self.cellT = tf.contrib.rnn.LSTMBlockCell(num_units=h_size,name='Graph_'+self.name+'_target_network_'+self.name)
+        self.cell = tf.nn.rnn_cell.LSTMCell(num_units=h_size,name='Graph_'+self.name+'_main_network_'+self.name+'_lstm')
+        self.cellT = tf.nn.rnn_cell.LSTMCell(num_units=h_size,name='Graph_'+self.name+'_target_network_'+self.name+'_lstm')
 
         #build main and target network
         self.mainQN = network.Qnetwork(N_station, h_size, self.cell, 'Graph_'+self.name+'_main_network_'+self.name)
@@ -33,7 +33,7 @@ class drqn_agent():
 
 
         #saver
-        self.saver=tf.train.Saver()
+        # self.saver=tf.train.Saver()
 
 
         #load model from path

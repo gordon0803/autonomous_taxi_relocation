@@ -5,10 +5,9 @@
 ## Agent is the stand, action is the place to relocate, and state is a tensor of passenger state, occupied vehicles, and relocated vehicles
 
 import numpy as np
-import random as rd
 import taxi_util as util
 from collections import deque
-from numba import jit
+
 
 
 class taxi_agent():
@@ -66,7 +65,8 @@ class taxi_simulator():
         self.taxi_in_relocation = deque([])
         self.taxi_in_q = [deque([])  for i in range(self.N)]  # taxis waiting in the queue of each station
         self.taxi_in_charge = [deque([])  for i in range(self.N)]  # taxis charging at each station
-        self.gamma_pool=np.random.gamma(10,size=500000).tolist() #maintain a pool of gamma variable of size 50000
+        # self.gamma_pool=np.random.gamma(10,size=500000).tolist() #maintain a pool of gamma variable of size 50000
+        self.gamma_pool=(15*np.ones(500000)).tolist()
 
     # assign the initial list of taxis
     def init_taxi(self):
@@ -93,7 +93,7 @@ class taxi_simulator():
         # Use -1 to denote no relocation
         # check gamma pool
         if len(self.gamma_pool) < 10000:
-            self.gamma_pool = np.random.gamma(10, size=500000).tolist()
+            self.gamma_pool = (15*np.ones(500000)).tolist()
 
         for i in range(len(action)):
             if action[i] > -1:
@@ -107,7 +107,8 @@ class taxi_simulator():
                 # 	print('No taxis in Q, check if your relocation action is derived properly')
 
         # now start the simulation
-
+        self.served_pass=0;
+        self.left_pass=0;
         # step 1: travel
         self.taxi_travel()
         # step 2: charging
@@ -119,7 +120,7 @@ class taxi_simulator():
         # step 5: serve passengers
         self.passenger_serve()
 
-
+        return self.served_pass,self.left_pass
 
     # 2: all taxi traveling
     def taxi_travel(self):
@@ -165,8 +166,13 @@ class taxi_simulator():
         for i in range(self.N):
             # update waiting time of existing passengers
             # also determine if the passengers will leave
+
+            tp=len(self.passenger_qtime[i])
             if self.passenger_qtime[i]:
                 self.passenger_qtime[i], self.passenger_expect_wait[i] = util.waiting_time_update(self.passenger_qtime[i],self.passenger_expect_wait[i])
+
+            self.left_pass+=len(self.passenger_qtime[i])-tp
+
             # new passengers
             n_pass_arrive = np.random.poisson(self.arrival_rate[i])
             destination = np.random.choice(self.station_list, n_pass_arrive, self.OD_split[i]).tolist()
@@ -206,6 +212,7 @@ class taxi_simulator():
                         taxi.trip(i, destination, time_to_destination, distance_to_destination)
                         # send this taxi to travel Q
                         self.taxi_in_travel.append(taxi)
+                        self.served_pass+=1
                 else:
                     # no available passengers, break the loop
                     break
@@ -244,7 +251,7 @@ class taxi_simulator():
         self.taxi_in_q = [deque([])  for i in range(self.N)]  # taxis waiting in the queue of each station
         self.taxi_in_charge = [deque([])  for i in range(self.N)]  # taxis charging at each station
         self.init_taxi()
-        self.gamma_pool = np.random.gamma(10, size=500000).tolist()  # maintain a pool of gamma variable of size 50000
+        self.gamma_pool = (15*np.ones(500000)).tolist()  # maintain a pool of gamma variable of size 50000
 
     def get_state(self):
         # give the states of the system after all the executions
@@ -259,8 +266,8 @@ class taxi_simulator():
         awaiting_pass=np.array([0]*self.N)
 
         for i in range(self.N):
-            passenger_gap[i, i] = max(len(self.passenger_qtime[i]),50)/50
-            awaiting_pass[i]=len(self.passenger_qtime[i])
+            passenger_gap[i, i] = min(len(self.passenger_qtime[i]),max_passenger)/max_passenger
+            awaiting_pass[i]=min(len(self.passenger_qtime[i]),max_passenger)/max_passenger
 
         for t in self.taxi_in_travel:
             taxi_in_travel[t.origin, t.destination] += 1
@@ -287,6 +294,12 @@ class taxi_simulator():
 
 
         #penalty reward
-        reward_penalty=incoming_taxi-awaiting_pass
+        reward_penalty=[safe_div(awaiting_pass[i],incoming_taxi[i]) for i in range(self.N)] #incoming taxis share the reward
 
         return state, reward, reward_penalty
+
+
+def safe_div(x,y):
+    if y == 0:
+        return 0
+    return x / y

@@ -2,34 +2,24 @@
 
 #Main file for DRQN
 
-import numpy as np
-import random
-import tensorflow as tf
-import matplotlib.pyplot as plt
-import scipy.misc
+
 import os
-import csv
-import itertools
-import tensorflow.contrib.slim as slim
 from network import *
-
-
 import taxi_env as te
-import taxi_util as tu
 import DRQN_agent
 import network
 import time
-from sklearn.utils.extmath import softmax
 import math
+import config
 
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True
-session = tf.Session(config=config)
+# config = tf.ConfigProto()
+# config.gpu_options.allow_growth = True
+# session = tf.Session(config=config)
 
 reward_out=open('reward_log.csv', 'w+')
 
 #------------------Parameter setting-----------------------
-N_station=20
+N_station=10
 l1=[5 for i in range(N_station)]
 OD_mat=[l1 for i in range(N_station)]
 distance=OD_mat
@@ -39,7 +29,7 @@ for i in range(N_station):
             distance[i][j]=math.ceil(abs(j-i)/2);
 
 travel_time=distance
-arrival_rate=[0.5+i/4.0 for i in range(N_station)]
+arrival_rate=[0.5+i/3.0 for i in range(N_station)]
 taxi_input=10
 
 
@@ -48,28 +38,23 @@ env.reset()
 print('System Successfully Initialized!')
 
 #Setting the training parameters
-batch_size = 32 #How many experience traces to use for each training step.
-trace_length = 10 #How long each experience trace will be when training
-update_freq = 5 #How often to perform a training step.
-y = .99 #Discount factor on the target Q-values
-startE = 1 #Starting chance of random action
-endE = 0.02 #Final chance of random action
-anneling_steps =180 #How many steps of training to reduce startE to endE.
-num_episodes = 1000 #How many episodes of game environment to train network with.
-load_model = False #Whether to load a saved model.
-warmup_time=100;
+batch_size = config.TRAIN_CONFIG['batch_size']
+trace_length = config.TRAIN_CONFIG['trace_length'] #How long each experience trace will be when training
+update_freq = config.TRAIN_CONFIG['update_freq'] #How often to perform a training step.
+y = config.TRAIN_CONFIG['y'] #Discount factor on the target Q-values
+startE =config.TRAIN_CONFIG['startE'] #Starting chance of random action
+endE = config.TRAIN_CONFIG['endE'] #Final chance of random action
+anneling_steps =config.TRAIN_CONFIG['anneling_steps'] #How many steps of training to reduce startE to endE.
+num_episodes = config.TRAIN_CONFIG['num_episodes'] #How many episodes of game environment to train network with.
+load_model = config.TRAIN_CONFIG['load_model'] #Whether to load a saved model.
+warmup_time=config.TRAIN_CONFIG['warmup_time'];
 path = "./drqn" #The path to save our model to.
-h_size = 576 #The size of the final convolutional layer before splitting it into Advantage and Value streams.
-max_epLength = 3000 #The max allowed length of our episode.
-time_per_step = 1 #Length of each step used in gif creation
-pre_train_steps = max_epLength*10 #How many steps of random actions before training begins.
-summaryLength = 100 #Number of epidoes to periodically save for analysis
+h_size = config.TRAIN_CONFIG['h_size']
+max_epLength = config.TRAIN_CONFIG['max_epLength']
+pre_train_steps = max_epLength*50 #How many steps of random actions before training begins.
+softmax_action=config.TRAIN_CONFIG['softmax_action']
+
 tau = 0.001
-
-softmax_action=False;
-
-episode_per_agent=50; #number of training episodes for every agent.
-
 
 
 #------------------Train the network-----------------------
@@ -113,9 +98,15 @@ with tf.Session() as sess:
     for station in range(N_station):
         stand_agent.append(DRQN_agent.drqn_agent(str(station), N_station, h_size, tau,sess))
 
-    sess.run(tf.global_variables_initializer())
+    global_init=tf.global_variables_initializer()
+    # writer = tf.summary.FileWriter('./graphs', sess.graph)
+    # writer.close()
+    sess.run(global_init)
+
+
+
     for i in range(num_episodes):
-        episodeBuffer = [[] for station in range(N_station)]
+        episodeBuffer = []
 
         # Reset environment and get first new observation
         env.reset()
@@ -126,7 +117,8 @@ with tf.Session() as sess:
 
         rAll = 0
         j = 0
-
+        total_serve = 0
+        total_leave = 0
         # We train one station in one single episode, and hold it unchanged for other stations, and we keep rotating.
         nn = i % N_station
         print(nn)
@@ -135,6 +127,7 @@ with tf.Session() as sess:
         state = (np.zeros([1, h_size]), np.zeros([1, h_size]))
         # The Q-Network
         while j < max_epLength:
+
             j += 1
             # for all the stations, act greedily
             # Choose an action by greedily (with e chance of random action) from the Q-network
@@ -145,7 +138,7 @@ with tf.Session() as sess:
                 state1 = stand_agent[nn].get_rnn_state(s, state)
                 for station in range(N_station):
                     Qdist = stand_agent[station].predict_softmax(s, state)
-                    Qprob=softmax(Qdist);
+                    Qprob=network.compute_softmax(Qdist);
                     a1_v=np.random.choice(Qprob[0],p=Qprob[0])
                     a1=np.argmax(Qprob[0] == a1_v)
                     a[station] = a1  # action performed by DRQN
@@ -162,14 +155,14 @@ with tf.Session() as sess:
                         a1 = stand_agent[station].predict(s,state)
                         a[station]=a1[0] #action performed by DRQN
 
-
             # move to the next step based on action selected
-            env.step(a)
+            ssp, lfp = env.step(a)
+            total_serve+=ssp
+            total_leave+=lfp
 
             # get state and reward
             s1P, r,rp = env.get_state()
-            r = r
-            rp=rp/(taxi_input * N_station )
+
             s1 = network.processState(s1P, N_station)
 
             total_steps += 1
@@ -177,11 +170,10 @@ with tf.Session() as sess:
             # episode buffer
             # we don't store the initial 200 steps of the simulation, as warm up periods
             if j>warmup_time:
-                for station in range(N_station):
-
-                    #we penalize the reward to motivate long term benefits
-                    newr=r-rp[a[station]]  #system reward - incoming taxis + awaiting passengers
-                    episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
+                #we penalize the reward to motivate long term benefits
+                newr=r+rp[a[nn]]  #system reward + shared reward
+                #only record the buffer for the chosen agent
+                episodeBuffer.append(np.reshape(np.array([s, a[nn], newr, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
 
             if total_steps > pre_train_steps and j>warmup_time:
                 # start training here
@@ -190,14 +182,14 @@ with tf.Session() as sess:
                 #We train the selected agent
                 if total_steps % (update_freq) == 0:
                     if total_steps % 1500 ==0: #update target network every 80 seconds
-                        t1=time.time()
                         stand_agent[nn].update_target_net()
-                        t2=time.time()-t1
+
                     # Reset the recurrent layer's hidden state
                     state_train = (np.zeros([batch_size, h_size]), np.zeros([batch_size, h_size]))
                     trainBatch = stand_agent[nn].buffer.sample(batch_size, trace_length)  # Get a random batch of experiences.
                     # Below we perform the Double-DQN update to the target Q-values
                     stand_agent[nn].train(trainBatch,trace_length,state_train,batch_size)
+
 
 
             # update reward after the warm up period
@@ -210,16 +202,15 @@ with tf.Session() as sess:
             state = state1
 
         # Add the episode to the experience buffer
-        for station in range(N_station):
-            bufferArray = np.array(episodeBuffer[station])
-            tempbuffer = list(zip(bufferArray))
-            stand_agent[station].remember(tempbuffer)
+        bufferArray = np.array(episodeBuffer)
+        stand_agent[nn].remember(bufferArray)
 
         jList.append(j)
         rList.append(rAll)  # reward in this episode
-        print('Episode:', i, ', totalreward:', rAll)
+        print('Episode:', i, ', totalreward:', rAll, ', total serve:',total_serve,', total leave:',total_leave)
 
         reward_out.write(str(j)+','+str(rAll)+'\n')
+
 
         # Periodically save the model.
         # if i % 100 == 0 and i != 0:
