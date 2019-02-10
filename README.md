@@ -31,9 +31,9 @@ Done.
 
 # Todo list (2019/2/5)
 ## 1. Change the code to incorporate the training of multiple stations ............ DONE
-## 2. Do we need to see the entire system states? Do we need to relocate to nearby stations only?
+## 2. Do we need to see the entire system states? Do we need to relocate to nearby stations only? 
 ## 3. Mechanism to compare not relocation vs relocation
-## 4. Develop a small testcase with 10 taxi stands, this would require a much smaller convolution network structure
+## 4. Develop a small testcase with 10 taxi stands, this would require a much smaller convolution network structure ......... DONE
 
 # Todo List (2019/2/6)
 ## Change experience replay and each station has a distinct experience buffer. .........DONE
