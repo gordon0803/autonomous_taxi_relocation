@@ -143,7 +143,10 @@ with tf.Session() as sess:
                         Qprob=network.compute_softmax(Qdist);
                         a1_v=np.random.choice(Qprob[0],p=Qprob[0])
                         a1=np.argmax(Qprob[0] == a1_v)
-                        a[station] = a1  # action performed by DRQN
+                    else:
+                        a1=station
+
+                    a[station] = a1  # action performed by DRQN
 
             else: #use e-greedy
                 if np.random.rand(1) < e or total_steps < pre_train_steps:
@@ -151,12 +154,17 @@ with tf.Session() as sess:
                         if env.taxi_in_q[station]:
                             state1[station] = stand_agent[station].get_rnn_state(s, state[station])
                             a[station]=np.random.randint(0, N_station) #random actions for each station
+                        else:
+                            a[station]=station
                 else:
                     for station in range(N_station):
                         if env.taxi_in_q[station]:
                             state1[station] = stand_agent[station].get_rnn_state(s, state[station])
                             a1 = stand_agent[station].predict(s,state[station])
-                            a[station]=a1[0] #action performed by DRQN
+                        else:
+                            a1=station #self-relocation
+
+                        a[station]=a1[0] #action performed by DRQN
 
 
             # move to the next step based on action selected
@@ -179,8 +187,7 @@ with tf.Session() as sess:
                 newr = r
                 #only record the buffer for the chosen agent
                 for station in range(N_station):
-                    if env.taxi_in_q[station]:
-                        episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
+                    episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
 
             if total_steps > pre_train_steps and j>warmup_time:
                 # start training here
