@@ -21,8 +21,8 @@ import numpy as np
 # config.gpu_options.allow_growth = True
 # session = tf.Session(config=config)
 
-reward_out=open('log/reward_log_'+datetime.now().strftime('%Y-%m-%d %H-%M-%S')+'.csv', 'w+')
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+reward_out=open('log/reward_log_idrqn_'+datetime.now().strftime('%Y-%m-%d %H-%M-%S')+'.csv', 'w+')
+#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 with open('simulation_input.dat','rb') as fp:
 	simulation_input=pickle.load(fp)
