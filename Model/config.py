@@ -9,7 +9,7 @@ TRAIN_CONFIG = {
     'y': .99,
     'startE':1,
     'endE':0.02,
-    'anneling_steps':300,
+    'anneling_steps':400,
     'num_episodes':1000,
     'load_model':False,
     'warmup_time':-1,

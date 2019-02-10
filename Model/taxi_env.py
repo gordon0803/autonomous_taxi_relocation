@@ -314,6 +314,10 @@ class taxi_simulator():
         #penalty reward
         reward_penalty=[safe_div(awaiting_pass[i],incoming_taxi[i]) for i in range(self.N)] #incoming taxis share the reward
 
+
+        #reward type 2: total passenger waiting time in the system
+        # reward=safe_div(1,sum([len(i) for i in self.passenger_qtime]))**0.5
+
         return state, reward, reward_penalty
 
 

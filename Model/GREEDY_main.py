@@ -43,7 +43,7 @@ warmup_time=config.TRAIN_CONFIG['warmup_time'];
 max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength*50 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
-softmax_action=True
+
 
 #------------------Train the network-----------------------
 
@@ -98,10 +98,13 @@ for i in range(num_episodes):
                a1=np.random.choice(list(range(N_station)),1,p=prob)[0]
                a[station] = a1  # action performed by DRQN
 
+
        else: #use max gap
            for station in range(N_station):
                a1 = stand_agent[station].predict(s)
                a[station]=a1 #action performed by DRQN
+               if not env.taxi_in_q[station]:
+                   a[station]=station
 
        # move to the next step based on action selected
        ssp, lfp = env.step(a)

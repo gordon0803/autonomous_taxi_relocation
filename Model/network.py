@@ -64,13 +64,13 @@ class Qnetwork():
         # In order to only propogate accurate gradients through the network, we will mask the first
         # half of the losses for each trace as per Lample & Chatlot 2016
         self.loss = tf.reduce_mean(self.td_error * self.mask, name=myScope+'_defineloss')
-        self.trainer = tf.train.AdamOptimizer(learning_rate=0.0001, name=myScope+'_Adam')
+        self.trainer = tf.train.AdamOptimizer(learning_rate=0.001, name=myScope+'_Adam')
         self.updateModel = self.trainer.minimize(self.loss, name=myScope+'_training')
 
 
 
 class experience_buffer():
-    def __init__(self, buffer_size=10):
+    def __init__(self, buffer_size=30):
         self.buffer = []
         self.buffer_size = buffer_size
 

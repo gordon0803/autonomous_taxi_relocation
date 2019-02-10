@@ -51,7 +51,7 @@ max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength*50 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
 
-tau = 0.001
+tau = 0.01
 
 
 #--------------Simulation initialization
@@ -139,14 +139,11 @@ with tf.Session() as sess:
                 for station in range(N_station):
                     state1[station] = stand_agent[station].get_rnn_state(s, state[station])
                     if env.taxi_in_q[station]:
-                        Qdist = stand_agent[station].predict_softmax(s, state)
+                        Qdist = stand_agent[station].predict_softmax(s, state[station])
                         Qprob=network.compute_softmax(Qdist);
                         a1_v=np.random.choice(Qprob[0],p=Qprob[0])
                         a1=np.argmax(Qprob[0] == a1_v)
-                    else:
-                        a1=station
-
-                    a[station] = a1  # action performed by DRQN
+                        a[station] = a1  # action performed by DRQN
 
             else: #use e-greedy
                 if np.random.rand(1) < e or total_steps < pre_train_steps:
@@ -154,17 +151,14 @@ with tf.Session() as sess:
                         if env.taxi_in_q[station]:
                             state1[station] = stand_agent[station].get_rnn_state(s, state[station])
                             a[station]=np.random.randint(0, N_station) #random actions for each station
-                        else:
-                            a[station]=station
+
+
                 else:
                     for station in range(N_station):
                         if env.taxi_in_q[station]:
                             state1[station] = stand_agent[station].get_rnn_state(s, state[station])
                             a1 = stand_agent[station].predict(s,state[station])[0]
-                        else:
-                            a1=station #self-relocation
-
-                        a[station]=a1 #action performed by DRQN
+                            a[station]=a1 #action performed by DRQN
 
 
             # move to the next step based on action selected
