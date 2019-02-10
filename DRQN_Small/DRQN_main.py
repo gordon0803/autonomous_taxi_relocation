@@ -11,18 +11,19 @@ import network
 import time
 import math
 import config
+from datetime import datetime
 
 # config = tf.ConfigProto()
 # config.gpu_options.allow_growth = True
 # session = tf.Session(config=config)
 
-reward_out=open('reward_log.csv', 'w+')
+reward_out=open('log/reward_log_'+datetime.now().strftime('%Y-%m-%d %H:%M:%S')+'.csv', 'w+')
 
 #------------------Parameter setting-----------------------
 N_station=10
 l1=[5 for i in range(N_station)]
 OD_mat=[l1 for i in range(N_station)]
-distance=OD_mat
+distance=np.zeros((N_station,N_station))
 for i in range(N_station):
         distance[i][i] = 0;
         for j in range(N_station):
@@ -211,12 +212,14 @@ with tf.Session() as sess:
         reward_out.write(str(j)+','+str(rAll)+'\n')
 
 
-        # Periodically save the model.
-        # if i % 100 == 0 and i != 0:
-        #     saver.save(sess, path + '/model-' + str(i) + '.cptk')
-        #     print("Saved Model")
-        # if len(rList) % summaryLength == 0 and len(rList) != 0:
-        #     print(total_steps, np.mean(rList[-summaryLength:]), e)
-    #             saveToCenter(i,rList,jList,np.reshape(np.array(episodeBuffer),[len(episodeBuffer),5]),\
+        #Periodically save the model.
+#         if i % 100 == 0 and i != 0:
+#             saver.save(sess, path + '/model-' + str(i) + '.cptk')
+#             print("Saved Model")
+#         if len(rList) % summaryLength == 0 and len(rList) != 0:
+#             print(total_steps, np.mean(rList[-summaryLength:]), e)
+#                 saveToCenter(i,rList,jList,np.reshape(np.array(episodeBuffer),[len(episodeBuffer),5]),\
 #                 summaryLength,h_size,sess,mainQN,time_per_step)
+
 # saver.save(sess,path+'/model-'+str(i)+'.cptk')
+reward_out.close()

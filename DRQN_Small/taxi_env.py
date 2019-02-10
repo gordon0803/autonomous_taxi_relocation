@@ -126,6 +126,8 @@ class taxi_simulator():
     def taxi_travel(self):
         for taxi in self.taxi_in_travel:
             taxi.move()
+        for taxi in self.taxi_in_relocation:
+            taxi.move()
 
     # 3: all taxi charging
     def taxi_charging(self):
@@ -160,6 +162,21 @@ class taxi_simulator():
                 else:
                     # still in travel, send this taxi back to the travel list
                     self.taxi_in_travel.append(taxi)
+        ntaxi = len(self.taxi_in_relocation)
+        for i in range(ntaxi):
+            if self.taxi_in_relocation:
+                taxi = self.taxi_in_relocation.popleft()
+                if taxi.time_to_destination <= 0:
+                    # arrived
+                    if taxi.battery >= 0.2 * taxi.max_battery:
+                        self.taxi_in_q[taxi.destination].append(taxi)  # add this taxi to the stands at destination
+                    else:
+                        self.taxi_in_charge[taxi.destination].append(taxi)
+
+                    taxi.arrived()
+                else:
+                    # still in travel, send this taxi back to the travel list
+                    self.taxi_in_relocation.append(taxi)
 
     # 5: update passenger waiting, leave, and generate passengers
     def passenger_update(self):
@@ -284,7 +301,6 @@ class taxi_simulator():
 
 
         #all states are within 0-1, continuous value
-
         state[:, :, 0] = passenger_gap;
         state[:, :, 1] = taxi_in_travel;
         state[:, :, 2] = taxi_in_relocation;
@@ -292,7 +308,7 @@ class taxi_simulator():
         total_taxi_in_travel = taxi_in_travel.sum()
         total_taxi_in_relocation = taxi_in_relocation.sum()
         reward = total_taxi_in_travel - total_taxi_in_relocation
-
+       
 
         #penalty reward
         reward_penalty=[safe_div(awaiting_pass[i],incoming_taxi[i]) for i in range(self.N)] #incoming taxis share the reward
