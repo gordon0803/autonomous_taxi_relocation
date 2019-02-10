@@ -21,8 +21,8 @@ import numpy as np
 # config.gpu_options.allow_growth = True
 # session = tf.Session(config=config)
 
-reward_out=open('log/reward_log_idrqn_'+datetime.now().strftime('%Y-%m-%d %H-%M-%S')+'.csv', 'w+')
-#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+reward_out=open('log/reward_log_'+datetime.now().strftime('%Y-%m-%d %H-%M-%S')+'.csv', 'w+')
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 with open('simulation_input.dat','rb') as fp:
 	simulation_input=pickle.load(fp)
@@ -141,10 +141,7 @@ with tf.Session() as sess:
                         Qprob = network.compute_softmax(Qdist);
                         a1_v = np.random.choice(Qprob[0], p=Qprob[0])
                         a1 = np.argmax(Qprob[0] == a1_v)
-                    else:
-                        a1 = station
-
-                    a[station] = a1  # action performed by DRQN
+                        a[station] = a1  # action performed by DRQN
 
             else:  # use e-greedy
                 if np.random.rand(1) < e or total_steps < pre_train_steps:
@@ -152,17 +149,13 @@ with tf.Session() as sess:
                         if env.taxi_in_q[station]:
                             state1[station] = stand_agent[station].get_rnn_state(s, state[station])
                             a[station] = np.random.randint(0, N_station)  # random actions for each station
-                        else:
-                            a[station] = station
+
                 else:
                     for station in range(N_station):
                         if env.taxi_in_q[station]:
                             state1[station] = stand_agent[station].get_rnn_state(s, state[station])
                             a1 = stand_agent[station].predict(s, state[station])[0]
-                        else:
-                            a1 = station  # self-relocation
-
-                        a[station] = a1  # action performed by DRQN
+                            a[station] = a1  # action performed by DRQN
 
             # move to the next step based on action selected
             ssp, lfp = env.step(a)

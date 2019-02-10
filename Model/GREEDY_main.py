@@ -3,16 +3,15 @@
 #Main file for greedy relocation
 
 
-import os,sys
-sys.path.insert(0,'./config')
+import os
 from network import *
 import taxi_env as te
 import GREEDY_agent
 import network
 import time
-import pickle
 import math
 import config
+import pickle
 
 # config = tf.ConfigProto()
 # config.gpu_options.allow_growth = True
@@ -20,6 +19,7 @@ import config
 
 reward_out=open('log/reward_log_greedy.csv', 'w')  #Replace the old log
 
+#------------------Parameter setting-----------------------
 with open('simulation_input.dat','rb') as fp:
     simulation_input=pickle.load(fp)
 
@@ -32,6 +32,7 @@ arrival_rate=simulation_input['arrival_rate']
 taxi_input=simulation_input['taxi_input']
 print(arrival_rate)
 
+
 env=te.taxi_simulator(arrival_rate,OD_mat,distance,travel_time,taxi_input)
 env.reset()
 print('System Successfully Initialized!')
@@ -42,7 +43,7 @@ warmup_time=config.TRAIN_CONFIG['warmup_time'];
 max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength*50 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
-
+softmax_action=True
 
 #------------------Train the network-----------------------
 
@@ -93,20 +94,14 @@ for i in range(num_episodes):
        # Choose an action by greedily (with gap) for this time
        if softmax_action==True:  #use softmax
            for station in range(N_station):
-               if env.taxi_in_q[station]:
-                   prob=stand_agent[station].predict_softmax(s)
-                   a1=np.random.choice(list(range(N_station)),1,p=prob)[0]
-                   a[station] = a1  # action performed by DRQN
-               else:
-                   a[station]=station
+               prob=stand_agent[station].predict_softmax(s)
+               a1=np.random.choice(list(range(N_station)),1,p=prob)[0]
+               a[station] = a1  # action performed by DRQN
 
        else: #use max gap
            for station in range(N_station):
-               if env.taxi_in_q[station]:
-                   a1 = stand_agent[station].predict(s)
-                   a[station]=a1 #action performed by DRQN
-               else:
-                   a[station]=station
+               a1 = stand_agent[station].predict(s)
+               a[station]=a1 #action performed by DRQN
 
        # move to the next step based on action selected
        ssp, lfp = env.step(a)
@@ -132,6 +127,6 @@ for i in range(num_episodes):
     jList.append(j)
     rList.append(rAll)  # reward in this episode
     print('Episode:', i, ', totalreward:', rAll, ', total serve:',total_serve,', total leave:',total_leave)
-    reward_out.write(str(j)+','+str(rAll)+'\n')
 
+reward_out.write(str(j)+','+str(rAll)+'\n')
 reward_out.close()

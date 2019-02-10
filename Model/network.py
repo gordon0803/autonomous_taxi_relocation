@@ -70,7 +70,7 @@ class Qnetwork():
 
 
 class experience_buffer():
-    def __init__(self, buffer_size=20):
+    def __init__(self, buffer_size=10):
         self.buffer = []
         self.buffer_size = buffer_size
 
