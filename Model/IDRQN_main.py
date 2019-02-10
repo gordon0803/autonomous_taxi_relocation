@@ -24,7 +24,7 @@ import numpy as np
 reward_out=open('log/reward_log_'+datetime.now().strftime('%Y-%m-%d %H-%M-%S')+'.csv', 'w+')
 os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
-with open('config/simulation_input.dat','rb') as fp:
+with open('simulation_input.dat','rb') as fp:
 	simulation_input=pickle.load(fp)
 
 #------------------Parameter setting-----------------------
@@ -177,7 +177,8 @@ with tf.Session() as sess:
                     newr=r
                     #only record the buffer for the chosen agent
 
-                    episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
+                    if env.taxi_in_q[station]:
+                        episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
 
                     if total_steps > pre_train_steps and j>warmup_time:
                         # start training here

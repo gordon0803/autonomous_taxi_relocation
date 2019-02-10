@@ -106,7 +106,7 @@ with tf.Session() as sess:
 
 
     for i in range(num_episodes):
-        episodeBuffer = []
+        episodeBuffer = [[] for station in range(N_station)]
 
         # Reset environment and get first new observation
         env.reset()
@@ -178,7 +178,9 @@ with tf.Session() as sess:
                 # newr=r+rp[a[nn]]  #system reward + shared reward
                 newr = r
                 #only record the buffer for the chosen agent
-                episodeBuffer.append(np.reshape(np.array([s, a[nn], newr, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
+                for station in range(N_station):
+                    if env.taxi_in_q[station]:
+                        episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
 
             if total_steps > pre_train_steps and j>warmup_time:
                 # start training here
@@ -207,12 +209,13 @@ with tf.Session() as sess:
                 state[station] = state1[station]
 
         # Add the episode to the experience buffer
-        bufferArray = np.array(episodeBuffer)
-        tempArray=[]
-     #now we break this bufferArray into tiny steps, according to the step length
-        for point in range(len(bufferArray) + 1 - trace_length):
-            tempArray.append(bufferArray[point:point + trace_length])
-        stand_agent[nn].remember(tempArray)
+        for station in range(N_station):
+            bufferArray = np.array(episodeBuffer[station])
+            tempArray=[]
+            #now we break this bufferArray into tiny steps, according to the step length
+            for point in range(len(bufferArray) + 1 - trace_length):
+                tempArray.append(bufferArray[point:point + trace_length])
+            stand_agent[station].remember(tempArray)
 
         jList.append(j)
         rList.append(rAll)  # reward in this episode
