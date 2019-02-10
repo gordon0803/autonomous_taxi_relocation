@@ -158,7 +158,7 @@ with tf.Session() as sess:
                     for station in range(N_station):
                         if env.taxi_in_q[station]:
                             state1[station] = stand_agent[station].get_rnn_state(s, state[station])
-                            a1 = stand_agent[station].predict(s, state[station])
+                            a1 = stand_agent[station].predict(s, state[station])[0]
                         else:
                             a1 = station  # self-relocation
 
