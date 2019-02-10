@@ -162,7 +162,7 @@ with tf.Session() as sess:
                         else:
                             a1 = station  # self-relocation
 
-                        a[station] = a1[0]  # action performed by DRQN
+                        a[station] = a1  # action performed by DRQN
 
             # move to the next step based on action selected
             ssp, lfp = env.step(a)
