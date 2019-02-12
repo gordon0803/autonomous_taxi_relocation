@@ -10,10 +10,10 @@ class Qnetwork():
         # It then resizes it and processes it through four convolutional layers.
 
         # input is a scalar which will later be reshaped
-        self.scalarInput = tf.placeholder(shape=[None, N_station * N_station * 3], dtype=tf.float32)
+        self.scalarInput = tf.placeholder(shape=[None, N_station * N_station * 5], dtype=tf.float32)
 
         # input is a tensor, like a 3 chanel image
-        self.imageIn = tf.reshape(self.scalarInput, shape=[-1, N_station, N_station, 3])
+        self.imageIn = tf.reshape(self.scalarInput, shape=[-1, N_station, N_station, 5])
 
         # create 4 convolution layers first
         self.conv1 = tf.layers.conv2d( \
@@ -121,7 +121,7 @@ def updateTargetGraph(tfVars,tau):
 
 def processState(state,Nstation):
     #input is the N by N by 3 tuple, map it to a list
-    return np.reshape(state,[Nstation*Nstation*3])
+    return np.reshape(state,[Nstation*Nstation*5])
 
 
 def compute_softmax(x):
