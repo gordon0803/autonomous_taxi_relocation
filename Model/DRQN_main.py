@@ -51,7 +51,7 @@ max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength*50 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
 
-tau = 0.01
+tau = 0.001
 
 
 #--------------Simulation initialization
@@ -121,7 +121,6 @@ with tf.Session() as sess:
         total_leave = 0
         # We train one station in one single episode, and hold it unchanged for other stations, and we keep rotating.
         nn = i % N_station
-        print(nn)
 
         # Reset the recurrent layer's hidden state
         state = [(np.zeros([1, h_size]), np.zeros([1, h_size])) for station in range(N_station)]
@@ -159,6 +158,7 @@ with tf.Session() as sess:
                             state1[station] = stand_agent[station].get_rnn_state(s, state[station])
                             a1 = stand_agent[station].predict(s,state[station])[0]
                             a[station]=a1 #action performed by DRQN
+
 
 
             # move to the next step based on action selected
@@ -220,7 +220,7 @@ with tf.Session() as sess:
 
         jList.append(j)
         rList.append(rAll)  # reward in this episode
-        print('Episode:', i, ', totalreward:', rAll, ', total serve:',total_serve,', total leave:',total_leave)
+        print('Episode:', i, ', totalreward:', rAll, ', total serve:',total_serve,', total leave:',total_leave,', terminal_taxi_distribution:',[len(v) for v in env.taxi_in_q],', terminal_passenger:',[len(v) for v in env.passenger_qtime],e)
 
 
         reward_out.write(str(i)+','+str(rAll)+'\n')

@@ -18,12 +18,17 @@ class Qnetwork():
         # create 4 convolution layers first
         self.conv1 = tf.layers.conv2d( \
             inputs=self.imageIn, filters=32, \
-            kernel_size=[4, 4], strides=[3, 3], padding='VALID', \
+            kernel_size=[3, 3], strides=[2, 2], padding='VALID', \
              name=myScope + '_net_conv1')
         self.conv2 = tf.layers.conv2d( \
             inputs=self.conv1, filters=64, \
             kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
              name=myScope + '_net_conv2')
+
+        self.conv3 = tf.layers.conv2d( \
+            inputs=self.conv2, filters=64, \
+            kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
+             name=myScope + '_net_conv3')
 
         # self.conv4 = tf.nn.relu(tf.layers.conv2d( \
         #     inputs=self.conv3, filters=64, \
@@ -34,7 +39,7 @@ class Qnetwork():
         # We take the output from the final convolutional layer and send it to a recurrent layer.
         # The input must be reshaped into [batch x trace x units] for rnn processing,
         # and then returned to [batch x units] when sent through the upper levles.
-        self.convFlat = tf.reshape(slim.flatten(self.conv2), [self.batch_size, self.trainLength, h_size],name=myScope+'_convlution_flattern')
+        self.convFlat = tf.reshape(slim.flatten(self.conv3), [self.batch_size, self.trainLength, h_size],name=myScope+'_convlution_flattern')
         self.state_in = rnn_cell.zero_state(self.batch_size, tf.float32)
         self.rnn, self.rnn_state = tf.nn.dynamic_rnn( \
             inputs=self.convFlat, cell=rnn_cell, dtype=tf.float32, initial_state=self.state_in, scope=myScope + '_net_rnn')
@@ -70,7 +75,7 @@ class Qnetwork():
 
 
 class experience_buffer():
-    def __init__(self, buffer_size=30):
+    def __init__(self, buffer_size=20):
         self.buffer = []
         self.buffer_size = buffer_size
 

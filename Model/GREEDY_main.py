@@ -43,7 +43,7 @@ warmup_time=config.TRAIN_CONFIG['warmup_time'];
 max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength*50 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
-
+softmax_action=False
 
 #------------------Train the network-----------------------
 
@@ -129,7 +129,7 @@ for i in range(num_episodes):
 
     jList.append(j)
     rList.append(rAll)  # reward in this episode
-    print('Episode:', i, ', totalreward:', rAll, ', total serve:',total_serve,', total leave:',total_leave)
+    print('Episode:', i, ', totalreward:', rAll, ', total serve:', total_serve, ', total leave:', total_leave, ', terminal_taxi_distribution:', [len(v) for v in env.taxi_in_q], ', terminal_passenger:',[len(v) for v in env.passenger_qtime])
 
 reward_out.write(str(j)+','+str(rAll)+'\n')
 reward_out.close()

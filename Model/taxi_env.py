@@ -308,17 +308,14 @@ class taxi_simulator():
         # reward
         total_taxi_in_travel = taxi_in_travel.sum()
         total_taxi_in_relocation = taxi_in_relocation.sum()
-        reward = total_taxi_in_travel - total_taxi_in_relocation
+        reward = 5*total_taxi_in_travel - total_taxi_in_relocation
 
 
-        #penalty reward
-        reward_penalty=[safe_div(awaiting_pass[i],incoming_taxi[i]) for i in range(self.N)] #incoming taxis share the reward
 
+        #consider decentralized reward
+        reward_decentralized=[-len(i)/max_passenger for i in self.passenger_qtime]
 
-        #reward type 2: total passenger waiting time in the system
-        # reward=safe_div(1,sum([len(i) for i in self.passenger_qtime]))**0.5
-
-        return state, reward, reward_penalty
+        return state, reward, reward_decentralized
 
 
 def safe_div(x,y):

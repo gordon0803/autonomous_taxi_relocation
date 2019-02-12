@@ -2,28 +2,48 @@ import numpy as np
 import json
 import math
 import pickle
+import taxi_util
 
-simulation_input=dict()
+simulation_input = dict()
 
-N_station=10;
-l1=[5 for i in range(N_station)]
-OD_mat=[l1 for i in range(N_station)]
-distance=np.zeros((N_station,N_station))
+N_station = 10;
+l1 = [5 for i in range(N_station)]
+distance = np.zeros((N_station, N_station))
 for i in range(N_station):
-        distance[i,i] = 0;
-        for j in range(N_station):
-            distance[i,j]=math.ceil(abs(j-i)/2);
+    distance[i, i] = 0;
+    for j in range(N_station):
+        distance[i, j] = 2 * math.ceil(abs(j - i) / 2);
 
-travel_time=distance
-arrival_rate=[(i*2+1)/6.0 for i in range(N_station)]
-taxi_input=10
+travel_time = distance
+arrival_rate = [(i + 1) / 6.0 for i in range(N_station)]
 
-simulation_input['N_station']=N_station;
-simulation_input['distance']=distance
-simulation_input['travel_time']=travel_time
-simulation_input['taxi_input']=taxi_input
-simulation_input['OD_mat']=OD_mat
-simulation_input['arrival_rate']=arrival_rate
+OD_mat = []
+for i in range(N_station):
+    kk = [(i * 2 + 1) / 6.0 for i in range(N_station)]
+    kk[i] = 0
+    OD_mat.append(kk)
+print(OD_mat)
 
-with open('simulation_input.dat','wb') as fp:
-	pickle.dump(simulation_input,fp)
+# calculate taxi_arrival_rate at each station
+incoming_taxi = np.zeros(N_station)
+for i in range(N_station):
+    temp_in = 0;
+    for j in range(N_station):
+        rate = np.array(OD_mat[j]) / sum(OD_mat[j])
+        temp_in += arrival_rate[j] * rate[i]
+    incoming_taxi[i] = temp_in
+
+taxi_input = 15
+
+simulation_input['N_station'] = N_station;
+simulation_input['distance'] = distance
+simulation_input['travel_time'] = travel_time
+simulation_input['taxi_input'] = taxi_input
+simulation_input['OD_mat'] = OD_mat
+simulation_input['arrival_rate'] = arrival_rate
+
+relo_graph = taxi_util.RGraph(distance, incoming_taxi, arrival_rate)
+
+
+with open('simulation_input.dat', 'wb') as fp:
+    pickle.dump(simulation_input, fp)
