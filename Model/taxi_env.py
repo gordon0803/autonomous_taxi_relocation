@@ -284,7 +284,7 @@ class taxi_simulator():
         # give the states of the system after all the executions
         # the state of the system is a 3 N by N matrix
         max_passenger=50;
-        state = np.ones([self.N, self.N, 5])
+        state = np.ones([self.N, self.N, 3])
         passenger_gap = np.zeros((self.N, self.N))
         taxi_in_travel = np.zeros((self.N, self.N))
         taxi_in_relocation = np.zeros((self.N, self.N))
@@ -329,17 +329,18 @@ class taxi_simulator():
         state[:, :, 0] = passenger_gap;
         state[:, :, 1] = taxi_in_travel;
         state[:, :, 2] = taxi_in_relocation;
-        state[:, :, 3] = taxi_in_charge;
-        state[:, :, 4] = taxi_in_q;
+        # state[:, :, 3] = taxi_in_charge;
+        # state[:, :, 4] = taxi_in_q;
         # reward
         total_taxi_in_travel = taxi_in_travel.sum()
         total_taxi_in_relocation = taxi_in_relocation.sum()
-        reward = 5*total_taxi_in_travel - total_taxi_in_relocation
+        # reward = 5*total_taxi_in_travel - total_taxi_in_relocation
 
 
         #penalty reward
         reward_penalty=[safe_div(awaiting_pass[i],incoming_taxi[i]) for i in range(self.N)] #incoming taxis share the reward
 
+        reward = total_taxi_in_travel
 
         return state, reward, reward_penalty
 

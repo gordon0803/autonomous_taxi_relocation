@@ -48,7 +48,7 @@ warmup_time=config.TRAIN_CONFIG['warmup_time'];
 path = "./drqn" #The path to save our model to.
 h_size = config.TRAIN_CONFIG['h_size']
 max_epLength = config.TRAIN_CONFIG['max_epLength']
-pre_train_steps = max_epLength*50 #How many steps of random actions before training begins.
+pre_train_steps = max_epLength*25 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
 
 tau = 0.001
@@ -158,6 +158,9 @@ with tf.Session() as sess:
                             state1[station] = stand_agent[station].get_rnn_state(s, state[station])
                             a1 = stand_agent[station].predict(s,state[station])[0]
                             a[station]=a1 #action performed by DRQN
+                            if a[station] == N_station:  # empty action
+                                a[station] = station
+
 
 
 
@@ -181,6 +184,9 @@ with tf.Session() as sess:
                 newr = r
                 #only record the buffer for the chosen agent
                 for station in range(N_station):
+                    if a[station]==-1:
+                        a[station]=N_station
+                        newr=0;
                     episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
 
             if total_steps > pre_train_steps and j>warmup_time:
@@ -189,13 +195,13 @@ with tf.Session() as sess:
                     e -= stepDrop
                 #We train the selected agent
                 if total_steps % (update_freq) == 0:
-                    stand_agent[nn].update_target_net() #soft update target network
+                        stand_agent[nn].update_target_net() #soft update target network
 
-                    # Reset the recurrent layer's hidden state
-                    state_train = (np.zeros([batch_size, h_size]), np.zeros([batch_size, h_size]))
-                    trainBatch = stand_agent[nn].buffer.sample(batch_size, trace_length)  # Get a random batch of experiences.
-                    # Below we perform the Double-DQN update to the target Q-values
-                    stand_agent[nn].train(trainBatch,trace_length,state_train,batch_size)
+                     # Reset the recurrent layer's hidden state
+                        state_train = (np.zeros([batch_size, h_size]), np.zeros([batch_size, h_size]))
+                        trainBatch = stand_agent[nn].buffer.sample(batch_size, trace_length)  # Get a random batch of experiences.
+                        # Below we perform the Double-DQN update to the target Q-values
+                        stand_agent[nn].train(trainBatch,trace_length,state_train,batch_size)
 
 
 

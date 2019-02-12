@@ -10,25 +10,25 @@ class Qnetwork():
         # It then resizes it and processes it through four convolutional layers.
 
         # input is a scalar which will later be reshaped
-        self.scalarInput = tf.placeholder(shape=[None, N_station * N_station * 5], dtype=tf.float32)
+        self.scalarInput = tf.placeholder(shape=[None, N_station * N_station * 3], dtype=tf.float32)
 
         # input is a tensor, like a 3 chanel image
-        self.imageIn = tf.reshape(self.scalarInput, shape=[-1, N_station, N_station, 5])
+        self.imageIn = tf.reshape(self.scalarInput, shape=[-1, N_station, N_station, 3])
 
         # create 4 convolution layers first
-        self.conv1 = tf.layers.conv2d( \
+        self.conv1 = tf.nn.relu(tf.layers.conv2d( \
             inputs=self.imageIn, filters=32, \
-            kernel_size=[3, 3], strides=[2, 2], padding='VALID', \
-             name=myScope + '_net_conv1')
-        self.conv2 = tf.layers.conv2d( \
+            kernel_size=[4, 4], strides=[3, 3], padding='VALID', \
+             name=myScope + '_net_conv1'))
+        self.conv2 = tf.nn.relu(tf.layers.conv2d( \
             inputs=self.conv1, filters=64, \
             kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
-             name=myScope + '_net_conv2')
+             name=myScope + '_net_conv2'))
 
-        self.conv3 = tf.layers.conv2d( \
-            inputs=self.conv2, filters=64, \
-            kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
-             name=myScope + '_net_conv3')
+        #self.conv3 = tf.nn.relu(tf.layers.conv2d( \
+        #    inputs=self.conv2, filters=64, \
+        #    kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
+        #     name=myScope + '_net_conv3'))
 
         # self.conv4 = tf.nn.relu(tf.layers.conv2d( \
         #     inputs=self.conv3, filters=64, \
@@ -39,14 +39,14 @@ class Qnetwork():
         # We take the output from the final convolutional layer and send it to a recurrent layer.
         # The input must be reshaped into [batch x trace x units] for rnn processing,
         # and then returned to [batch x units] when sent through the upper levles.
-        self.convFlat = tf.reshape(slim.flatten(self.conv3), [self.batch_size, self.trainLength, h_size],name=myScope+'_convlution_flattern')
+        self.convFlat = tf.reshape(slim.flatten(self.conv2), [self.batch_size, self.trainLength, h_size],name=myScope+'_convlution_flattern')
         self.state_in = rnn_cell.zero_state(self.batch_size, tf.float32)
         self.rnn, self.rnn_state = tf.nn.dynamic_rnn( \
             inputs=self.convFlat, cell=rnn_cell, dtype=tf.float32, initial_state=self.state_in, scope=myScope + '_net_rnn')
         self.rnn = tf.reshape(self.rnn, shape=[-1, h_size],name=myScope+'_reshapeRNN_out')
         # The output from the recurrent player is then split into separate Value and Advantage streams
         self.streamA, self.streamV = tf.split(self.rnn, 2, 1,name=myScope+'_split_streamAV')
-        self.AW = tf.Variable(tf.random_normal([h_size // 2, N_station]),name=myScope+'AW')
+        self.AW = tf.Variable(tf.random_normal([h_size // 2, N_station+1]),name=myScope+'AW') #action +1, with the last action being station without any vehicles
         self.VW = tf.Variable(tf.random_normal([h_size // 2, 1]),name=myScope+'VW')
         self.Advantage = tf.matmul(self.streamA, self.AW, name=myScope+'_matmulAdvantage')
         self.Value = tf.matmul(self.streamV, self.VW, name=myScope+'_matmulValue')
@@ -56,7 +56,7 @@ class Qnetwork():
         self.predict = tf.argmax(self.Qout, 1,name=myScope+'_prediction')
         self.maskA = tf.zeros([self.batch_size, self.trainLength // 2])
         self.maskB = tf.ones([self.batch_size, self.trainLength // 2])
-        self.actions_onehot = tf.one_hot(self.actions, N_station, dtype=tf.float32,name=myScope+'_onehot')
+        self.actions_onehot = tf.one_hot(self.actions, N_station+1, dtype=tf.float32,name=myScope+'_onehot') #action +1, with the last action being station without any vehicles
         self.mask = tf.concat([self.maskA, self.maskB], 1)
         self.mask = tf.reshape(self.mask, [-1])
 
@@ -75,7 +75,7 @@ class Qnetwork():
 
 
 class experience_buffer():
-    def __init__(self, buffer_size=20):
+    def __init__(self, buffer_size=50):
         self.buffer = []
         self.buffer_size = buffer_size
 
@@ -121,7 +121,7 @@ def updateTargetGraph(tfVars,tau):
 
 def processState(state,Nstation):
     #input is the N by N by 3 tuple, map it to a list
-    return np.reshape(state,[Nstation*Nstation*5])
+    return np.reshape(state,[Nstation*Nstation*3])
 
 
 def compute_softmax(x):

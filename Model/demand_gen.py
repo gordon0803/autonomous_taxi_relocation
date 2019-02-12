@@ -33,7 +33,7 @@ for i in range(N_station):
         temp_in += arrival_rate[j] * rate[i]
     incoming_taxi[i] = temp_in
 
-taxi_input = 15
+taxi_input = 6
 
 simulation_input['N_station'] = N_station;
 simulation_input['distance'] = distance

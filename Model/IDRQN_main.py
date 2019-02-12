@@ -50,7 +50,7 @@ warmup_time=config.TRAIN_CONFIG['warmup_time'];
 path = "./drqn" #The path to save our model to.
 h_size = config.TRAIN_CONFIG['h_size']
 max_epLength = config.TRAIN_CONFIG['max_epLength']
-pre_train_steps = max_epLength*50 #How many steps of random actions before training begins.
+pre_train_steps = max_epLength*25 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
 
 tau = 0.001
@@ -158,6 +158,9 @@ with tf.Session() as sess:
                             state1[station] = stand_agent[station].get_rnn_state(s, state[station])
                             a1 = stand_agent[station].predict(s, state[station])[0]
                             a[station] = a1  # action performed by DRQN
+                            if a[station]==N_station:
+                                a[station]=station
+
 
 
             # move to the next step based on action selected
@@ -184,6 +187,9 @@ with tf.Session() as sess:
                     # newr=r+rp[a[station]]  #system reward + shared reward
                     newr=r
                     #only record the buffer for the chosen agent
+                    if a[station]==-1:
+                        newr=0
+                        a[station]=N_station
 
                     episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
 
