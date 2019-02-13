@@ -1,5 +1,5 @@
 ##Configuration file here
-import demand_gen
+#import demand_gen
 import pickle
 
 TRAIN_CONFIG = {

@@ -118,8 +118,8 @@ def updateTargetGraph(tfVars,tau):
 
 
 def processState(state,Nstation):
-    #input is the N by N by 3 tuple, map it to a list
-    return np.reshape(state,[Nstation*Nstation*5])
+    #input is the N by N by 6 tuple, map it to a list
+    return np.reshape(state,[Nstation*Nstation*6])
 
 
 def compute_softmax(x):
