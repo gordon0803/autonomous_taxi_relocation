@@ -1,10 +1,10 @@
 ##Configuration file here
-#import demand_gen
+import demand_gen
 import pickle
 
 TRAIN_CONFIG = {
     'batch_size': 10,
-    'trace_length': 100,
+    'trace_length': 20,
     'update_freq': 5,
     'y': .99,
     'startE':1,
@@ -18,7 +18,7 @@ TRAIN_CONFIG = {
     'max_epLength':500, #The max allowed length of our episode.
     'pre_train_steps':20000, #How many steps of random actions before traning begins
     'softmax_action':False, #use softmax or not
-    'silent': 0 #0 for print, 1 for no print
+    'silent': 1 #0 for print, 1 for no print
 }
 
 
