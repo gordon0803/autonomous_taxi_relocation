@@ -1,20 +1,26 @@
 #Xinwu Qian 2019-02-06
 
 #This implements independent q learning approach
+use_gpu=1;
 
-
-import os,sys
-sys.path.insert(0,'./config')
+import os
 import config
 import taxi_env as te
-import IDRQN_agent
-import network
 import time
-import math
 from datetime import datetime
 import pickle
 import tensorflow as tf
 import numpy as np
+
+
+if use_gpu==1:
+    import network_gpu as network
+    import DRQN_agent_gpu as DRQN_agent
+else:
+    import network
+    import DRQN_agent
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
 
 #force on gpu
 # config = tf.ConfigProto()
@@ -22,7 +28,7 @@ import numpy as np
 # session = tf.Session(config=config)
 
 reward_out=open('log/IDRQN_reward_log_'+datetime.now().strftime('%Y-%m-%d %H-%M-%S')+'.csv', 'w+')
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
 
 with open('simulation_input.dat','rb') as fp:
 	simulation_input=pickle.load(fp)
@@ -52,6 +58,7 @@ h_size = config.TRAIN_CONFIG['h_size']
 max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength*25 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
+silent=config.TRAIN_CONFIG['silent'] #do not print training time
 
 tau = 0.001
 
@@ -94,7 +101,7 @@ with tf.Session() as sess:
     # targetOps=[]
 
     for station in range(N_station):
-        stand_agent.append(IDRQN_agent.drqn_agent(str(station), N_station, h_size, tau,sess))
+        stand_agent.append(DRQN_agent.drqn_agent(str(station), N_station, h_size, tau,sess))
 
     global_init=tf.global_variables_initializer()
     # writer = tf.summary.FileWriter('./graphs', sess.graph)
@@ -182,6 +189,7 @@ with tf.Session() as sess:
             # episode buffer
             # we don't store the initial 200 steps of the simulation, as warm up periods
             if j>warmup_time:
+                t1=time.time()
                 for station in range(N_station):
                 #we penalize the reward to motivate long term benefits
                     # newr=r+rp[a[station]]  #system reward + shared reward
@@ -190,15 +198,12 @@ with tf.Session() as sess:
                     if a[station]==-1:
                         newr=0
                         a[station]=N_station
-
                     episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
-
                     if total_steps > pre_train_steps and j>warmup_time:
                         # start training here
                         #We train the selected agent
                         if total_steps % (update_freq) == 0:
                             stand_agent[station].update_target_net() #soft update target network
-
                             # Reset the recurrent layer's hidden state
                             state_train = (np.zeros([batch_size, h_size]), np.zeros([batch_size, h_size]))
                             trainBatch = stand_agent[station].buffer.sample(batch_size, trace_length)  # Get a random batch of experiences.
@@ -206,6 +211,8 @@ with tf.Session() as sess:
                             stand_agent[station].train(trainBatch,trace_length,state_train,batch_size)
                 # update reward after the warm up period
                 rAll += r
+                if total_steps > pre_train_steps and total_steps % (update_freq)  == 0 and silent==0:
+                    print('training time:',time.time()-t1)
             # swap state
             s = s1
             sP = s1P
@@ -218,8 +225,7 @@ with tf.Session() as sess:
             tempArray=[]
             #now we break this bufferArray into tiny steps, according to the step length
             for point in range(len(bufferArray) + 1 - trace_length):
-                tempArray.append(bufferArray[point:point + trace_length])
-            stand_agent[station].remember(tempArray)
+                stand_agent[station].remember(bufferArray[point:point + trace_length])
 
         jList.append(j)
         rList.append(rAll)  # reward in this episode

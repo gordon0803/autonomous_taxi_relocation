@@ -10,10 +10,10 @@ class Qnetwork():
         # It then resizes it and processes it through four convolutional layers.
 
         # input is a scalar which will later be reshaped
-        self.scalarInput = tf.placeholder(shape=[None, N_station * N_station * 3], dtype=tf.float32)
+        self.scalarInput = tf.placeholder(shape=[None, N_station * N_station * 6], dtype=tf.float32)
 
         # input is a tensor, like a 3 chanel image
-        self.imageIn = tf.reshape(self.scalarInput, shape=[-1, N_station, N_station, 3])
+        self.imageIn = tf.reshape(self.scalarInput, shape=[-1, N_station, N_station, 6])
 
         # create 4 convolution layers first
         self.conv1 = tf.nn.relu(tf.layers.conv2d( \
@@ -75,7 +75,7 @@ class Qnetwork():
 
 
 class experience_buffer():
-    def __init__(self, buffer_size=50):
+    def __init__(self, buffer_size=5000):
         self.buffer = []
         self.buffer_size = buffer_size
 
@@ -90,8 +90,7 @@ class experience_buffer():
             sampled_episodes.append(random.choice(self.buffer))
         sampledTraces = []
         for episode in sampled_episodes:
-            point = np.random.randint(0, len(episode) + 1 - trace_length)
-            sampledTraces.append(episode[point])
+            sampledTraces.append(episode)
         sampledTraces = np.array(sampledTraces)
         return np.reshape(sampledTraces, [batch_size * trace_length, 4])
 
@@ -121,7 +120,7 @@ def updateTargetGraph(tfVars,tau):
 
 def processState(state,Nstation):
     #input is the N by N by 3 tuple, map it to a list
-    return np.reshape(state,[Nstation*Nstation*3])
+    return np.reshape(state,[Nstation*Nstation*6])
 
 
 def compute_softmax(x):

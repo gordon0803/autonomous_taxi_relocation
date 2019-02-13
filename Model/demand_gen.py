@@ -16,6 +16,7 @@ for i in range(N_station):
 
 travel_time = distance
 arrival_rate = [(i + 1) / 6.0 for i in range(N_station)]
+arrival_rate=[0.1,0.4,0.7,1,1.3,0.1,0.4,0.7,1,1.3]
 
 OD_mat = []
 for i in range(N_station):

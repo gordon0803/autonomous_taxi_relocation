@@ -24,8 +24,8 @@ class drqn_agent():
     def drqn_build(self,N_station,h_size,tau):
         #construct the DRQN for each agent
 
-        self.cell = tf.nn.rnn_cell.LSTMCell(num_units=h_size,name='Graph_'+self.name+'_main_network_'+self.name+'_lstm')
-        self.cellT = tf.nn.rnn_cell.LSTMCell(num_units=h_size,name='Graph_'+self.name+'_target_network_'+self.name+'_lstm')
+        self.cell = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1,num_units=h_size,name='Graph_'+self.name+'_main_network_'+self.name+'_lstm')
+        self.cellT = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1,num_units=h_size,name='Graph_'+self.name+'_target_network_'+self.name+'_lstm')
 
         #build main and target network
         self.mainQN = network.Qnetwork(N_station, h_size, self.cell, 'Graph_'+self.name+'_main_network_'+self.name)
@@ -84,9 +84,10 @@ class drqn_agent():
 
     def predict(self,s,state):
         #make the prediction
-        action=self.sess.run(self.mainQN.predict, feed_dict={self.mainQN.scalarInput:[s],self.mainQN.trainLength:1,\
-                                                      self.mainQN.state_in:state,self.mainQN.batch_size:1})
-
+        # action=self.sess.run(self.mainQN.predict, feed_dict={self.mainQN.scalarInput:[s],self.mainQN.trainLength:1,\
+        #                                               self.mainQN.state_in:state,self.mainQN.batch_size:1})
+        action = self.sess.run(self.mainQN.predict, feed_dict={self.mainQN.scalarInput: [s], self.mainQN.trainLength: 1, \
+                                                            self.mainQN.batch_size: 1})
         return action
 
 
@@ -97,8 +98,12 @@ class drqn_agent():
         return Qdist
 
     def get_rnn_state(self,s,state):
-        state1=self.sess.run(self.mainQN.rnn_state, feed_dict={self.mainQN.scalarInput: [s], self.mainQN.trainLength: 1, \
-                                                              self.mainQN.state_in: state, self.mainQN.batch_size: 1})
+       # state1=self.sess.run(self.mainQN.rnn_state, feed_dict={self.mainQN.scalarInput: [s], self.mainQN.trainLength: 1, \
+#                                                              self.mainQN.state_in: state, self.mainQN.batch_size: 1})
+
+        state1 = self.sess.run(self.mainQN.rnn_state,
+                               feed_dict={self.mainQN.scalarInput: [s], self.mainQN.trainLength: 1, \
+                                          self.mainQN.batch_size: 1})
 
         return state1
 
@@ -129,26 +134,38 @@ class drqn_agent():
     def train(self,trainBatch,trace_length,state_train,batch_size):
         #use double DQN as the training step
         #Use main net to make a prediction
+        #
+        # Q1=self.sess.run(self.mainQN.predict, feed_dict={ \
+        #     self.mainQN.scalarInput: np.vstack(trainBatch[:, 3]),self.mainQN.trainLength: trace_length,\
+        #     self.mainQN.state_in: state_train, self.mainQN.batch_size: batch_size})
 
-        Q1=self.sess.run(self.mainQN.predict, feed_dict={ \
-            self.mainQN.scalarInput: np.vstack(trainBatch[:, 3]),self.mainQN.trainLength: trace_length,\
-            self.mainQN.state_in: state_train, self.mainQN.batch_size: batch_size})
         #Use target network to evaluate outputred
+        # Q2 = self.sess.run(self.targetQN.Qout, feed_dict={ \
+        #     self.targetQN.scalarInput: np.vstack(trainBatch[:, 3]), \
+        #     self.targetQN.trainLength: trace_length, self.targetQN.state_in: state_train, self.targetQN.batch_size: batch_size})
+
+        Q1 = self.sess.run(self.mainQN.predict, feed_dict={ \
+            self.mainQN.scalarInput: np.vstack(trainBatch[:, 3]), self.mainQN.trainLength: trace_length, \
+            self.mainQN.batch_size: batch_size})
+
         Q2 = self.sess.run(self.targetQN.Qout, feed_dict={ \
             self.targetQN.scalarInput: np.vstack(trainBatch[:, 3]), \
-            self.targetQN.trainLength: trace_length, self.targetQN.state_in: state_train, self.targetQN.batch_size: batch_size})
+            self.targetQN.trainLength: trace_length, self.targetQN.batch_size: batch_size})
 
         #Metl the Q value to obtain the target Q value
         doubleQ = Q2[range(batch_size * trace_length), Q1]
         targetQ = trainBatch[:, 2] + (.99 * doubleQ) #.99 is the discount for doubleQ value
 
         #update network parameters with the predefined training method
+        # self.sess.run(self.mainQN.updateModel, \
+        #          feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 0]), self.mainQN.targetQ: targetQ, \
+        #                     self.mainQN.actions: trainBatch[:, 1], self.mainQN.trainLength: trace_length, \
+        #                     self.mainQN.state_in: state_train, self.mainQN.batch_size: batch_size})
+
         self.sess.run(self.mainQN.updateModel, \
-                 feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 0]), self.mainQN.targetQ: targetQ, \
-                            self.mainQN.actions: trainBatch[:, 1], self.mainQN.trainLength: trace_length, \
-                            self.mainQN.state_in: state_train, self.mainQN.batch_size: batch_size})
-
-
+                      feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 0]), self.mainQN.targetQ: targetQ, \
+                                 self.mainQN.actions: trainBatch[:, 1], self.mainQN.trainLength: trace_length, \
+                                self.mainQN.batch_size: batch_size})
 
     #remember the episodebuffer
     def remember(self,episodeBuffer):

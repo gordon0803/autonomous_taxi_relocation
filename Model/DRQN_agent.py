@@ -35,7 +35,6 @@ class drqn_agent():
         #saver
         # self.saver=tf.train.Saver()
 
-
         #load model from path
         # if self.ckpt_path:
         #     ckpt = tf.train.get_checkpoint_state(self.ckpt_path)
@@ -53,7 +52,7 @@ class drqn_agent():
 
         #store the name and initial values for target network
         self.targetOps=network.updateTargetGraph(self.trainables,tau)
-        # self.update_target_net()
+    # self.update_target_net()
 
         print("Agent network initialization complete, Agent name:",self.name)
 
@@ -66,19 +65,6 @@ class drqn_agent():
           estimator1: Estimator to copy the paramters from
           estimator2: Estimator to copy the parameters to
         """
-        # e1_params = [t for t in tf.trainable_variables(scope='main_network_'+self.name) if t.name.startswith('main_network_'+self.name)]
-        # e1_params = sorted(e1_params, key=lambda v: v.name)
-        # e2_params = [t for t in tf.trainable_variables(scope='target_network_'+self.name) if t.name.startswith('target_network_'+self.name)]
-        # e2_params = sorted(e2_params, key=lambda v: v.name)
-
-        # e1_params = sorted(self.main_trainables, key=lambda v: v.name)
-        # e2_params = sorted(self.target_trainables, key=lambda v: v.name)
-        # update_ops = []
-        # for e1_v, e2_v in zip(e1_params, e2_params):
-        #     op = e2_v.assign(e1_v)
-        #     update_ops.append(op)
-        # print(update_ops)
-        # self.sess.run(update_ops)
 
         network.updateTarget(self.targetOps,self.sess)
 
@@ -106,6 +92,7 @@ class drqn_agent():
     def train(self,trainBatch,trace_length,state_train,batch_size):
         #use double DQN as the training step
         #Use main net to make a prediction
+
         Q1=self.sess.run(self.mainQN.predict, feed_dict={ \
             self.mainQN.scalarInput: np.vstack(trainBatch[:, 3]),self.mainQN.trainLength: trace_length,\
             self.mainQN.state_in: state_train, self.mainQN.batch_size: batch_size})
@@ -123,6 +110,7 @@ class drqn_agent():
                  feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 0]), self.mainQN.targetQ: targetQ, \
                             self.mainQN.actions: trainBatch[:, 1], self.mainQN.trainLength: trace_length, \
                             self.mainQN.state_in: state_train, self.mainQN.batch_size: batch_size})
+
 
 
     #remember the episodebuffer
