@@ -11,6 +11,7 @@ from datetime import datetime
 import pickle
 import tensorflow as tf
 import numpy as np
+from system_tracker import system_tracker
 
 
 if use_gpu==1:
@@ -63,6 +64,9 @@ tau = 0.001
 
 
 #--------------Simulation initialization
+sys_tracker = system_tracker()
+sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station)
+
 env=te.taxi_simulator(arrival_rate,OD_mat,distance,travel_time,taxi_input)
 env.reset()
 print('System Successfully Initialized!')
@@ -118,6 +122,8 @@ with tf.Session(config=config1) as sess:
 
         # Reset environment and get first new observation
         env.reset()
+        # Reset timestep of system tracker
+        sys_tracker.new_episode()
         # return the current state of the system
         sP, tempr,temprp = env.get_state()
         # process the state into a list
@@ -169,7 +175,8 @@ with tf.Session(config=config1) as sess:
                             if a[station] == N_station:  # empty action
                                 a[station] = station
 
-
+            # record the state and action
+            sys_tracker.record(s, a)
 
 
             # move to the next step based on action selected
@@ -253,3 +260,4 @@ with tf.Session(config=config1) as sess:
 
 # saver.save(sess,path+'/model-'+str(i)+'.cptk')
 reward_out.close()
+sys_tracker.save('DRQN')

@@ -26,27 +26,28 @@ class system_tracker():
 		self.episode_count =0
 		self.timestep = 0
 
-	def initialize(self, distance, travel_time, arrival_rate, taxi_input):
+	def initialize(self, distance, travel_time, arrival_rate, taxi_input, N_station):
 		self.baseinfo['distance'] = distance.tolist()
 		self.baseinfo['travel_time'] = travel_time.tolist()
 		self.baseinfo['arrival_rate'] = arrival_rate
 		self.baseinfo['taxi_input'] = int(taxi_input) # transform numpy.int64 to normal integer
+		self.N_station = N_station
 
 	def new_episode(self):
 		self.episode_count +=1
 		self.frameinfo[str(self.episode_count)] = []
 
 	def record(self, s, a):
-		passenger_gap = np.diag(np.reshape(s[range(0,len(s),6)],(10,10))) # change this to fit different size of station
-		taxi_in_travel = np.reshape(s[range(1,len(s),6)],(10,10))
-		taxi_in_relocation = np.reshape(s[range(2,len(s),6)],(10,10))
-		taxi_in_charge = np.diag(np.reshape(s[range(3,len(s),6)],(10,10))) 
+		passenger_gap = np.diag(np.reshape(s[range(0,len(s),6)],(self.N_station,self.N_station))) 
+		taxi_in_travel = np.reshape(s[range(1,len(s),6)],(self.N_station,self.N_station))
+		taxi_in_relocation = np.reshape(s[range(2,len(s),6)],(self.N_station,self.N_station))
+		taxi_in_charge = np.diag(np.reshape(s[range(3,len(s),6)],(self.N_station,self.N_station))) 
 		action = [int(x) for x in a]
 		oneframeinfo = {
 		"passenger_gap":passenger_gap.tolist(), 
 		#"taxi_in_travel": taxi_in_travel.tolist(), 
 		#"taxi_in_relocation": taxi_in_relocation.tolist(),
-		#"taxi_in_charge":taxi_in_charge.tolist(), 
+		"taxi_in_charge":taxi_in_charge.tolist(), 
 		"action": action
 		}
 		self.frameinfo[str(self.episode_count)].append(oneframeinfo)
