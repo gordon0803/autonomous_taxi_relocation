@@ -43,7 +43,7 @@ simulation_input['taxi_input'] = taxi_input
 simulation_input['OD_mat'] = OD_mat
 simulation_input['arrival_rate'] = arrival_rate
 
-relo_graph = taxi_util.RGraph(distance, incoming_taxi, arrival_rate)
+#relo_graph = taxi_util.RGraph(distance, incoming_taxi, arrival_rate)
 
 
 with open('simulation_input.dat', 'wb') as fp:

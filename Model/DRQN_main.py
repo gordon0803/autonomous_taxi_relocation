@@ -22,9 +22,9 @@ else:
     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
-# config = tf.ConfigProto()
-# config.gpu_options.allow_growth = True
-# session = tf.Session(config=config)
+config1 = tf.ConfigProto()
+config1.gpu_options.allow_growth = True
+
 
 reward_out=open('log/reward_log_'+datetime.now().strftime('%Y-%m-%d %H-%M-%S')+'.csv', 'w+')
 
@@ -98,7 +98,7 @@ if not os.path.exists(path):
 # this example equals target network to the original network after every few episodes
 # we may want to modify this
 
-with tf.Session() as sess:
+with tf.Session(config=config1) as sess:
     # one DRQN per station is needed, different network requires a different scope (name)
     stand_agent = []
     # targetOps=[]

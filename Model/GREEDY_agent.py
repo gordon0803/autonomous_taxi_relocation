@@ -16,12 +16,12 @@ class greedy_agent():
 
     def predict(self,s):
         #make the prediction
-        passenger_gap = np.diag(np.reshape(s[range(0,len(s),6)],(10,10)))  # change this to fit different station number
+        passenger_gap = np.diag(np.reshape(s[range(0,300,3)],(10,10)))
         action=np.argmax(passenger_gap)
         return action
 
     def predict_softmax(self,s):
-        passenger_gap = np.diag(np.reshape(s[range(0,len(s),6)],(10,10)))
+        passenger_gap = np.diag(np.reshape(s[range(0,300,3)],(10,10)))
         utility = np.exp(np.array(passenger_gap))
         prob = utility / sum(utility)
         return prob
