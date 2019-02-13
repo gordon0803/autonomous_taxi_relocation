@@ -10,10 +10,10 @@ class Qnetwork():
         # It then resizes it and processes it through four convolutional layers.
 
         # input is a scalar which will later be reshaped
-        self.scalarInput = tf.placeholder(shape=[None, N_station * N_station * 6], dtype=tf.float32)
+        self.scalarInput = tf.placeholder(shape=[None, N_station * N_station * 5], dtype=tf.float32)
 
         # input is a tensor, like a 3 chanel image
-        self.imageIn = tf.reshape(self.scalarInput, shape=[-1, N_station, N_station, 6])
+        self.imageIn = tf.reshape(self.scalarInput, shape=[-1, N_station, N_station, 5])
 
         # create 4 convolution layers first
         self.conv1 = tf.nn.relu(tf.layers.conv2d( \
@@ -40,9 +40,8 @@ class Qnetwork():
         # The input must be reshaped into [batch x trace x units] for rnn processing,
         # and then returned to [batch x units] when sent through the upper levles.
         self.convFlat = tf.reshape(slim.flatten(self.conv2), [self.batch_size, self.trainLength, h_size],name=myScope+'_convlution_flattern')
-        self.state_in = rnn_cell.zero_state(self.batch_size, tf.float32)
-        self.rnn, self.rnn_state = tf.nn.dynamic_rnn( \
-            inputs=self.convFlat, cell=rnn_cell, dtype=tf.float32, initial_state=self.state_in, scope=myScope + '_net_rnn')
+        self.lstm=rnn_cell;
+        self.rnn, self.rnn_state = self.lstm(inputs=self.convFlat,dtype=tf.float32)
         self.rnn = tf.reshape(self.rnn, shape=[-1, h_size],name=myScope+'_reshapeRNN_out')
         # The output from the recurrent player is then split into separate Value and Advantage streams
         self.streamA, self.streamV = tf.split(self.rnn, 2, 1,name=myScope+'_split_streamAV')
@@ -120,7 +119,7 @@ def updateTargetGraph(tfVars,tau):
 
 def processState(state,Nstation):
     #input is the N by N by 3 tuple, map it to a list
-    return np.reshape(state,[Nstation*Nstation*6])
+    return np.reshape(state,[Nstation*Nstation*5])
 
 
 def compute_softmax(x):
