@@ -48,6 +48,7 @@ Else send the taxi back to travel queue
 
 # Todo List (2019/2/12)
 ## Create the test case for new york city network
+## Add system tracker to capture the detailed relocation strategy from the learning algorithm ....... DONE
 
 # Todo List (2019/2/9)
 ## Add historical action replay. .........DONE
