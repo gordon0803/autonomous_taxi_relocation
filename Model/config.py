@@ -4,13 +4,15 @@ import pickle
 
 TRAIN_CONFIG = {
     'batch_size': 10,
-    'trace_length': 20,
+    'trace_length': 50,
     'update_freq': 5,
     'y': .99,
     'startE':1,
     'endE':0.01,
     'anneling_steps':300*500,
     'num_episodes':1000,
+    'buffer_size':5000,
+    'prioritized':1,
     'load_model':False,
     'warmup_time':-1,
     'model_path':'./drqn',

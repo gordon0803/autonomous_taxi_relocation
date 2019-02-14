@@ -2,7 +2,7 @@
 
 #Main file for DRQN
 
-use_gpu=1;
+use_gpu=0;
 import os
 import config
 import taxi_env as te
@@ -11,15 +11,11 @@ from datetime import datetime
 import pickle
 import tensorflow as tf
 import numpy as np
+import network
+import DRQN_agent
 from system_tracker import system_tracker
 
-
-if use_gpu==1:
-    import network_gpu as network
-    import DRQN_agent_gpu as DRQN_agent
-else:
-    import network
-    import DRQN_agent
+if use_gpu==0:
     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 
@@ -59,6 +55,7 @@ max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength*25 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
 silent=config.TRAIN_CONFIG['silent']
+prioritized=config.TRAIN_CONFIG['prioritized']
 
 tau = 0.001
 
@@ -66,7 +63,6 @@ tau = 0.001
 #--------------Simulation initialization
 sys_tracker = system_tracker()
 sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station)
-
 env=te.taxi_simulator(arrival_rate,OD_mat,distance,travel_time,taxi_input)
 env.reset()
 print('System Successfully Initialized!')
@@ -108,7 +104,7 @@ with tf.Session(config=config1) as sess:
     # targetOps=[]
 
     for station in range(N_station):
-        stand_agent.append(DRQN_agent.drqn_agent(str(station), N_station, h_size, tau,sess))
+        stand_agent.append(DRQN_agent.drqn_agent(str(station), N_station, h_size, tau,sess,prioritized=prioritized,is_gpu=use_gpu))
 
     global_init=tf.global_variables_initializer()
     # writer = tf.summary.FileWriter('./graphs', sess.graph)
@@ -119,11 +115,9 @@ with tf.Session(config=config1) as sess:
 
     for i in range(num_episodes):
         episodeBuffer = [[] for station in range(N_station)]
-
+        sys_tracker.new_episode()
         # Reset environment and get first new observation
         env.reset()
-        # Reset timestep of system tracker
-        sys_tracker.new_episode()
         # return the current state of the system
         sP, tempr,temprp = env.get_state()
         # process the state into a list
@@ -137,8 +131,6 @@ with tf.Session(config=config1) as sess:
         nn = i % N_station
 
         # Reset the recurrent layer's hidden state
-        state = [(np.zeros([1, h_size]), np.zeros([1, h_size])) for station in range(N_station)]
-        state1=[[] for station in range(N_station)]
         # The Q-Network
         while j < max_epLength:
 
@@ -150,9 +142,8 @@ with tf.Session(config=config1) as sess:
 
             if softmax_action==True:  #use softmax
                 for station in range(N_station):
-                    state1[station] = stand_agent[station].get_rnn_state(s, state[station])
                     if env.taxi_in_q[station]:
-                        Qdist = stand_agent[station].predict_softmax(s, state[station])
+                        Qdist = stand_agent[station].predict_softmax(s)
                         Qprob=network.compute_softmax(Qdist);
                         a1_v=np.random.choice(Qprob[0],p=Qprob[0])
                         a1=np.argmax(Qprob[0] == a1_v)
@@ -162,23 +153,18 @@ with tf.Session(config=config1) as sess:
                 if np.random.rand(1) < e or total_steps < pre_train_steps:
                     for station in range(N_station):
                         if env.taxi_in_q[station]:
-                            state1[station] = stand_agent[station].get_rnn_state(s, state[station])
                             a[station]=np.random.randint(0, N_station) #random actions for each station
 
 
                 else:
                     for station in range(N_station):
                         if env.taxi_in_q[station]:
-                            state1[station] = stand_agent[station].get_rnn_state(s, state[station])
-                            a1 = stand_agent[station].predict(s,state[station])[0]
+                            a1 = stand_agent[station].predict(s)[0]
                             a[station]=a1 #action performed by DRQN
                             if a[station] == N_station:  # empty action
                                 a[station] = station
 
-            # record the state and action
             sys_tracker.record(s, a)
-
-
             # move to the next step based on action selected
             ssp, lfp = env.step(a)
             total_serve+=ssp
@@ -212,11 +198,15 @@ with tf.Session(config=config1) as sess:
                 if total_steps % (update_freq) == 0:
                     t1=time.time()
                     stand_agent[nn].update_target_net() #soft update target network
-                    # Reset the recurrent layer's hidden state
-                    state_train = (np.zeros([batch_size, h_size]), np.zeros([batch_size, h_size]))
-                    trainBatch = stand_agent[nn].buffer.sample(batch_size, trace_length)  # Get a random batch of experiences.
-                    # Below we perform the Double-DQN update to the target Q-values
-                    stand_agent[nn].train(trainBatch,trace_length,state_train,batch_size)
+                    if prioritized:
+                        tree_idx, trainBatch, ISWeights = stand_agent[nn].buffer.sample(batch_size,trace_length)
+                        abs_error=stand_agent[nn].per_train(trainBatch,trace_length,batch_size,ISWeights)
+                        stand_agent[nn].buffer.batch_update(tree_idx,abs_error)
+
+                    else:
+                        trainBatch = stand_agent[nn].buffer.sample(batch_size, trace_length)  # Get a random batch of experiences.
+                        # Below we perform the Double-DQN update to the target Q-values
+                        stand_agent[nn].train(trainBatch,trace_length,batch_size)
 
                     if silent==0:
                         print('Training time: ',time.time()-t1)
@@ -230,8 +220,7 @@ with tf.Session(config=config1) as sess:
             # swap state
             s = s1
             sP = s1P
-            for station in range(N_station):
-                state[station] = state1[station]
+
 
         # Add the episode to the experience buffer
         for station in range(N_station):

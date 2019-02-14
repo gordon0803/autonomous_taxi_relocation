@@ -45,10 +45,10 @@ class system_tracker():
 		taxi_in_charge = np.diag(np.reshape(s[range(3,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station)))
 		action = [int(x) for x in a]
 		oneframeinfo = {
-		"passenger_gap":passenger_gap.tolist(), 
-		#"taxi_in_travel": taxi_in_travel.tolist(), 
+		"passenger_gap":passenger_gap.tolist(),
+		#"taxi_in_travel": taxi_in_travel.tolist(),
 		#"taxi_in_relocation": taxi_in_relocation.tolist(),
-		"taxi_in_charge":taxi_in_charge.tolist(), 
+		"taxi_in_charge":taxi_in_charge.tolist(),
 		"action": action
 		}
 		self.frameinfo[str(self.episode_count)].append(oneframeinfo)
@@ -73,6 +73,3 @@ class system_tracker():
 			pass # not done yet
 		else:
 			pprint(self.frameinfo[str(episode)])
-
-
-

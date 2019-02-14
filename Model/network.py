@@ -5,7 +5,7 @@ import numpy as np
 import random
 
 class Qnetwork():
-    def __init__(self, N_station, h_size, rnn_cell, myScope):
+    def __init__(self, N_station, h_size, myScope, is_gpu=0,prioritized=0):
         # The network recieves a frame from the game, flattened into an array.
         # It then resizes it and processes it through four convolutional layers.
 
@@ -25,7 +25,7 @@ class Qnetwork():
             kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
              name=myScope + '_net_conv2'))
 
-        #self.conv3 = tf.nn.relu(tf.layers.conv2d( \
+        # self.conv3 = tf.nn.relu(tf.layers.conv2d( \
         #    inputs=self.conv2, filters=64, \
         #    kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
         #     name=myScope + '_net_conv3'))
@@ -34,14 +34,28 @@ class Qnetwork():
         #     inputs=self.conv3, filters=64, \
         #     kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
         #      name=myScope + '_net_conv4'),name=myScope+'_net_relu4')
+
         self.trainLength = tf.placeholder(dtype=tf.int32,name=myScope+'_trainlength')
         self.batch_size = tf.placeholder(dtype=tf.int32, shape=[],name=myScope+'_batchsize')
         # We take the output from the final convolutional layer and send it to a recurrent layer.
         # The input must be reshaped into [batch x trace x units] for rnn processing,
         # and then returned to [batch x units] when sent through the upper levles.
         self.convFlat = tf.reshape(slim.flatten(self.conv2), [self.batch_size, self.trainLength, h_size],name=myScope+'_convlution_flattern')
-        self.lstm=rnn_cell;
-        self.rnn, self.rnn_state = self.lstm(inputs=self.convFlat,dtype=tf.float32)
+
+        if is_gpu:
+            print('Using CudnnLSTM')
+            self.lstm = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1, num_units=h_size,name=myScope+'_lstm')
+            self.rnn, self.rnn_state = self.lstm(inputs=self.convFlat)
+        else:
+            print('Using LSTMfused')
+            self.lstm = tf.contrib.rnn.LSTMBlockFusedCell(num_units=h_size,name=myScope+'_lstm')
+            self.rnn, self.rnn_state = self.lstm(inputs=self.convFlat, dtype=tf.float32)
+
+        if prioritized:
+            self.ISWeights = tf.placeholder(tf.float32, [None, 1], name=myScope+'IS_weights')
+
+
+
         self.rnn = tf.reshape(self.rnn, shape=[-1, h_size],name=myScope+'_reshapeRNN_out')
         # The output from the recurrent player is then split into separate Value and Advantage streams
         self.streamA, self.streamV = tf.split(self.rnn, 2, 1,name=myScope+'_split_streamAV')
@@ -67,7 +81,12 @@ class Qnetwork():
         self.td_error = tf.square(self.targetQ - self.Q, name=myScope+'_TDERROR')
         # In order to only propogate accurate gradients through the network, we will mask the first
         # half of the losses for each trace as per Lample & Chatlot 2016
-        self.loss = tf.reduce_mean(self.td_error * self.mask, name=myScope+'_defineloss')
+        if prioritized:
+            self.abs_errors = tf.reduce_mean(tf.reshape(tf.abs(self.targetQ - self.Q),shape=[self.batch_size,self.trainLength]),axis=1)
+            self.loss = tf.reduce_mean(self.ISWeights * self.td_error*self.mask,name=myScope+'_per_defineloss')
+        else:
+            self.loss = tf.reduce_mean(self.td_error * self.mask, name=myScope+'_defineloss')
+
         self.trainer = tf.train.AdamOptimizer(learning_rate=0.001, name=myScope+'_Adam')
         self.updateModel = self.trainer.minimize(self.loss, name=myScope+'_training')
 
@@ -94,6 +113,116 @@ class experience_buffer():
         return np.reshape(sampledTraces, [batch_size * trace_length, 4])
 
 
+#prioritized experience buffer
+class per_experience_buffer():
+    epsilon = 0.01  # small amount to avoid zero priority
+    alpha = 0.6  # [0~1] convert the importance of TD error to priority
+    beta = 0.4  # importance-sampling, from initial value increasing to 1
+    beta_increment_per_sampling = 0.001
+    abs_err_upper = 1.  # clipped abs error
+
+    def __init__(self, capacity=5000):
+        self.tree = SumTree(capacity)
+
+    def add(self, transition):
+        max_p = np.max(self.tree.tree[-self.tree.capacity:])
+        if max_p == 0:
+            max_p = self.abs_err_upper
+        self.tree.add(max_p, transition)  # set the max p for new p
+
+    def sample(self, batch_size,trace_length):
+        b_idx, b_memory, ISWeights = np.empty((batch_size,), dtype=np.int32), [], np.empty((batch_size, 1))
+        pri_seg = self.tree.total_p / batch_size  # priority segment
+        self.beta = np.min([1., self.beta + self.beta_increment_per_sampling])  # max = 1
+        min_prob = np.min(self.tree.tree[-self.tree.capacity:]) / self.tree.total_p  # for later calculate ISweight
+        for i in range(batch_size):
+            a, b = pri_seg * i, pri_seg * (i + 1)
+            v = np.random.uniform(a, b)
+            idx, p, data = self.tree.get_leaf(v)
+            prob = p / self.tree.total_p
+            ISWeights[i, 0] = np.power(prob / min_prob, -self.beta) #importance sampling weight
+            b_idx[i]=idx
+            b_memory.append(data)
+
+        b_memory=np.reshape(b_memory, [batch_size * trace_length, 4])
+        return b_idx, b_memory, ISWeights
+
+    def batch_update(self, tree_idx, abs_errors):
+        abs_errors += self.epsilon  # convert to abs and avoid 0
+        clipped_errors = np.minimum(abs_errors, self.abs_err_upper)
+        ps = np.power(clipped_errors, self.alpha)
+        for ti, p in zip(tree_idx, ps):
+            self.tree.update(ti, p)
+
+
+
+
+class SumTree(object):
+    """
+    This SumTree code is a modified version and the original code is from:
+    https://github.com/jaara/AI-blog/blob/master/SumTree.py
+    Story data with its priority in the tree.
+    """
+    data_pointer = 0
+
+    def __init__(self, capacity):
+        self.capacity = capacity  # for all priority values
+        self.tree = np.zeros(2 * capacity - 1)
+        # [--------------Parent nodes-------------][-------leaves to recode priority-------]
+        #             size: capacity - 1                       size: capacity
+        self.data = np.zeros(capacity, dtype=object)  # for all transitions
+        # [--------------data frame-------------]
+        #             size: capacity
+
+    def add(self, p, data):
+        tree_idx = self.data_pointer + self.capacity - 1
+        self.data[self.data_pointer] = data  # update data_frame
+        self.update(tree_idx, p)  # update tree_frame
+
+        self.data_pointer += 1
+        if self.data_pointer >= self.capacity:  # replace when exceed the capacity
+            self.data_pointer = 0
+
+    def update(self, tree_idx, p):
+        change = p - self.tree[tree_idx]
+        self.tree[tree_idx] = p
+        # then propagate the change through tree
+        while tree_idx != 0:    # this method is faster than the recursive loop in the reference code
+            tree_idx = (tree_idx - 1) // 2
+            self.tree[tree_idx] += change
+
+    def get_leaf(self, v):
+        """
+        Tree structure and array storage:
+        Tree index:
+             0         -> storing priority sum
+            / \
+          1     2
+         / \   / \
+        3   4 5   6    -> storing priority for transitions
+        Array type for storing:
+        [0,1,2,3,4,5,6]
+        """
+        parent_idx = 0
+        while True:     # the while loop is faster than the method in the reference code
+            cl_idx = 2 * parent_idx + 1         # this leaf's left and right kids
+            cr_idx = cl_idx + 1
+            if cl_idx >= len(self.tree):        # reach bottom, end search
+                leaf_idx = parent_idx
+                break
+            else:       # downward search, always search for a higher priority node
+                if v <= self.tree[cl_idx]:
+                    parent_idx = cl_idx
+                else:
+                    v -= self.tree[cl_idx]
+                    parent_idx = cr_idx
+
+        data_idx = leaf_idx - self.capacity + 1
+        return leaf_idx, self.tree[leaf_idx], self.data[data_idx]
+
+    @property
+    def total_p(self):
+        return self.tree[0]  # the root
 
 
 
