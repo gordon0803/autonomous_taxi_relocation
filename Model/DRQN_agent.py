@@ -143,5 +143,3 @@ class drqn_agent():
     # remember the episodebuffer
     def remember(self, episodeBuffer):
         self.buffer.add(episodeBuffer)
-
-

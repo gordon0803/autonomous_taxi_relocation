@@ -1,7 +1,7 @@
 #Xinwu Qian 2019-02-06
 
 #This implements independent q learning approach
-use_gpu=1
+use_gpu=0
 import os
 import config
 import taxi_env as te
@@ -221,8 +221,10 @@ with tf.Session(config=config1) as sess:
             bufferArray = np.array(episodeBuffer[station])
             tempArray=[]
             #now we break this bufferArray into tiny steps, according to the step length
-            for point in range(len(bufferArray) + 1 - trace_length):
-                stand_agent[station].remember(bufferArray[point:point + trace_length])
+            #lets allow overlapping for halp of the segment
+            #e.g., if trace_length=20, we store [0-19] and [10-29]....keep this
+            for point in range(2*(len(bufferArray)+ 1 - trace_length)//trace_length):
+                stand_agent[station].remember(bufferArray[(point*(trace_length//2)):(point*(trace_length//2) + trace_length)])
 
         jList.append(j)
         rList.append(rAll)  # reward in this episode

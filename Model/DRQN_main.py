@@ -221,14 +221,16 @@ with tf.Session(config=config1) as sess:
             s = s1
             sP = s1P
 
-
-        # Add the episode to the experience buffer
+            # Add the episode to the experience buffer
         for station in range(N_station):
             bufferArray = np.array(episodeBuffer[station])
-            tempArray=[]
-            #now we break this bufferArray into tiny steps, according to the step length
-            for point in range(len(bufferArray) + 1 - trace_length):
-                stand_agent[station].remember(bufferArray[point:point + trace_length])
+            tempArray = []
+            # now we break this bufferArray into tiny steps, according to the step length
+            # lets allow overlapping for halp of the segment
+            # e.g., if trace_length=20, we store [0-19] and [10-29]....keep this
+            for point in range(len(bufferArray) * 2 // trace_length):
+                stand_agent[station].remember(
+                    bufferArray[point * (trace_length // 2):point * (trace_length // 2) + trace_length])
 
         jList.append(j)
         rList.append(rAll)  # reward in this episode

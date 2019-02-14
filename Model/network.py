@@ -1,4 +1,3 @@
-
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import numpy as np
@@ -123,7 +122,7 @@ class per_experience_buffer():
     abs_err_upper = 1.  # clipped abs error
 
 
-    def __init__(self, capacity=100000):
+    def __init__(self, capacity=10000):
         self.tree = SumTree(capacity)
         self.capacity=capacity
 
