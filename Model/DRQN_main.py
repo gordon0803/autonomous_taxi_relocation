@@ -104,7 +104,7 @@ with tf.Session(config=config1) as sess:
     # targetOps=[]
 
     for station in range(N_station):
-        stand_agent.append(DRQN_agent.drqn_agent(str(station), N_station, h_size, tau,sess,prioritized=prioritized,is_gpu=use_gpu))
+        stand_agent.append(DRQN_agent.drqn_agent(str(station), N_station, h_size, tau,sess,batch_size,trace_length,prioritized=prioritized,is_gpu=use_gpu))
 
     global_init=tf.global_variables_initializer()
     # writer = tf.summary.FileWriter('./graphs', sess.graph)

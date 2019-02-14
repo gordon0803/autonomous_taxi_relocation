@@ -9,7 +9,7 @@ import network
 import time
 
 class drqn_agent():
-    def __init__(self,name,N_station,h_size,tau,sess,prioritized=0,is_gpu=0,ckpt_path=None):
+    def __init__(self,name,N_station,h_size,tau,sess, batch_size,train_length,prioritized=0,is_gpu=0,ckpt_path=None):
         #config is the parameter setting
         #ckpt_path is the path for load models
         self.name=name
@@ -23,15 +23,15 @@ class drqn_agent():
         self.action=-1 #remember the most recent action taken
         self.ckpt_path=ckpt_path
         self.sess=sess;
-        self.drqn_build(N_station,h_size,tau,prioritized=prioritized,is_gpu=is_gpu) #build the network
+        self.drqn_build(N_station,h_size,tau,batch_size,train_length,prioritized=prioritized,is_gpu=is_gpu) #build the network
 
 
 
-    def drqn_build(self,N_station,h_size,tau,prioritized,is_gpu):
+    def drqn_build(self,N_station,h_size,tau,batch_size,train_length,prioritized,is_gpu):
 
         #build main and target network
-        self.mainQN = network.Qnetwork(N_station, h_size, myScope='Graph_'+self.name+'_main_network_'+self.name,is_gpu=is_gpu,prioritized=prioritized)
-        self.targetQN = network.Qnetwork(N_station, h_size, myScope='Graph_'+self.name+'_target_network_' + self.name, is_gpu=is_gpu,prioritized=prioritized)
+        self.mainQN = network.Qnetwork(N_station, h_size, batch_size,train_length,myScope='Graph_'+self.name+'_main_network_'+self.name,is_gpu=is_gpu,prioritized=prioritized)
+        self.targetQN = network.Qnetwork(N_station, h_size, batch_size,train_length,myScope='Graph_'+self.name+'_target_network_' + self.name, is_gpu=is_gpu,prioritized=prioritized)
 
 
         #saver
@@ -137,6 +137,7 @@ class drqn_agent():
                                                self.mainQN.trainLength: trace_length,
                                                self.mainQN.batch_size: batch_size,
                                                 self.mainQN.ISWeights:ISWeights})
+
         return abs_error
 
     # remember the episodebuffer

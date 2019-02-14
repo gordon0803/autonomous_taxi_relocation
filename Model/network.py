@@ -5,7 +5,7 @@ import numpy as np
 import random
 
 class Qnetwork():
-    def __init__(self, N_station, h_size, myScope, is_gpu=0,prioritized=0):
+    def __init__(self, N_station, h_size, batch_size,train_length, myScope, is_gpu=0,prioritized=0):
         # The network recieves a frame from the game, flattened into an array.
         # It then resizes it and processes it through four convolutional layers.
 
@@ -52,7 +52,8 @@ class Qnetwork():
             self.rnn, self.rnn_state = self.lstm(inputs=self.convFlat, dtype=tf.float32)
 
         if prioritized:
-            self.ISWeights = tf.placeholder(tf.float32, [None, 1], name=myScope+'IS_weights')
+            self.ISWeights = tf.placeholder(tf.float32, [batch_size,train_length], name=myScope+'IS_weights')
+            self.ISWeights_new=tf.reshape(self.ISWeights,[-1])
 
 
 
@@ -83,7 +84,7 @@ class Qnetwork():
         # half of the losses for each trace as per Lample & Chatlot 2016
         if prioritized:
             self.abs_errors = tf.reduce_mean(tf.reshape(tf.abs(self.targetQ - self.Q),shape=[self.batch_size,self.trainLength]),axis=1)
-            self.loss = tf.reduce_mean(self.ISWeights * self.td_error*self.mask,name=myScope+'_per_defineloss')
+            self.loss = tf.reduce_mean(self.ISWeights_new * self.td_error*self.mask,name=myScope+'_per_defineloss')
         else:
             self.loss = tf.reduce_mean(self.td_error * self.mask, name=myScope+'_defineloss')
 
@@ -115,14 +116,16 @@ class experience_buffer():
 
 #prioritized experience buffer
 class per_experience_buffer():
-    epsilon = 0.01  # small amount to avoid zero priority
+    epsilon = 0.00001  # small amount to avoid zero priority
     alpha = 0.6  # [0~1] convert the importance of TD error to priority
     beta = 0.4  # importance-sampling, from initial value increasing to 1
-    beta_increment_per_sampling = 0.001
+    beta_increment_per_sampling = 0.00002
     abs_err_upper = 1.  # clipped abs error
 
-    def __init__(self, capacity=5000):
+
+    def __init__(self, capacity=100000):
         self.tree = SumTree(capacity)
+        self.capacity=capacity
 
     def add(self, transition):
         max_p = np.max(self.tree.tree[-self.tree.capacity:])
@@ -131,16 +134,18 @@ class per_experience_buffer():
         self.tree.add(max_p, transition)  # set the max p for new p
 
     def sample(self, batch_size,trace_length):
-        b_idx, b_memory, ISWeights = np.empty((batch_size,), dtype=np.int32), [], np.empty((batch_size, 1))
+        b_idx, b_memory, ISWeights = np.empty((batch_size,), dtype=np.int32), [], np.empty((batch_size, trace_length))
         pri_seg = self.tree.total_p / batch_size  # priority segment
         self.beta = np.min([1., self.beta + self.beta_increment_per_sampling])  # max = 1
-        min_prob = np.min(self.tree.tree[-self.tree.capacity:]) / self.tree.total_p  # for later calculate ISweight
+        templist=self.tree.tree[-self.tree.capacity:]
+        min_prob = np.min(templist[np.nonzero(templist)]) / self.tree.total_p
+
         for i in range(batch_size):
             a, b = pri_seg * i, pri_seg * (i + 1)
             v = np.random.uniform(a, b)
             idx, p, data = self.tree.get_leaf(v)
             prob = p / self.tree.total_p
-            ISWeights[i, 0] = np.power(prob / min_prob, -self.beta) #importance sampling weight
+            ISWeights[i, :] = np.power(prob/min_prob, -self.beta)
             b_idx[i]=idx
             b_memory.append(data)
 
