@@ -12,7 +12,7 @@ TRAIN_CONFIG = {
     'anneling_steps':300*500,
     'num_episodes':1000,
     'buffer_size':5000,
-    'prioritized':1,
+    'prioritized':-1,
     'load_model':False,
     'warmup_time':-1,
     'model_path':'./drqn',

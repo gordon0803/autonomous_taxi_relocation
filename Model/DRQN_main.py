@@ -15,12 +15,13 @@ import network
 import DRQN_agent
 from system_tracker import system_tracker
 
-if use_gpu==0:
-    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
+if use_gpu==0: # If true then do not use gpu
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1' 
 
 
 config1 = tf.ConfigProto()
-config1.gpu_options.allow_growth = True
+config1.gpu_options.allow_growth = True # Memory on demand, otherwise take all memory available
 
 
 reward_out=open('log/reward_log_'+datetime.now().strftime('%Y-%m-%d %H-%M-%S')+'.csv', 'w+')
@@ -198,18 +199,20 @@ with tf.Session(config=config1) as sess:
                 if total_steps % (update_freq) == 0:
                     t1=time.time()
                     stand_agent[nn].update_target_net() #soft update target network
-                    if prioritized:
-                        tree_idx, trainBatch, ISWeights = stand_agent[nn].buffer.sample(batch_size,trace_length)
-                        abs_error=stand_agent[nn].per_train(trainBatch,trace_length,batch_size,ISWeights)
-                        stand_agent[nn].buffer.batch_update(tree_idx,abs_error)
+                    
+                    # For the following code block, why not out the loop?
+	                if prioritized:
+	                    tree_idx, trainBatch, ISWeights = stand_agent[nn].buffer.sample(batch_size,trace_length)
+	                    abs_error=stand_agent[nn].per_train(trainBatch,trace_length,batch_size,ISWeights)
+	                    stand_agent[nn].buffer.batch_update(tree_idx,abs_error)
 
-                    else:
-                        trainBatch = stand_agent[nn].buffer.sample(batch_size, trace_length)  # Get a random batch of experiences.
-                        # Below we perform the Double-DQN update to the target Q-values
-                        stand_agent[nn].train(trainBatch,trace_length,batch_size)
+	                else:
+	                    trainBatch = stand_agent[nn].buffer.sample(batch_size, trace_length)  # Get a random batch of experiences.
+	                    # Below we perform the Double-DQN update to the target Q-values
+	                    stand_agent[nn].train(trainBatch,trace_length,batch_size) 
 
-                    if silent==0:
-                        print('Training time: ',time.time()-t1)
+	                if silent==0:
+	                    print('Training time: ',time.time()-t1)
 
 
 

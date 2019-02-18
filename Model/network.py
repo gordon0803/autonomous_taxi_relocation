@@ -132,7 +132,7 @@ class per_experience_buffer():
             max_p = self.abs_err_upper
         self.tree.add(max_p, transition)  # set the max p for new p
 
-    def sample(self, batch_size,trace_length):
+    def sample(self, batch_size,trace_length):  #Seems hvae a bug at line 151?
         b_idx, b_memory, ISWeights = np.empty((batch_size,), dtype=np.int32), [], np.empty((batch_size, trace_length))
         pri_seg = self.tree.total_p / batch_size  # priority segment
         self.beta = np.min([1., self.beta + self.beta_increment_per_sampling])  # max = 1
@@ -148,7 +148,7 @@ class per_experience_buffer():
             b_idx[i]=idx
             b_memory.append(data)
 
-        b_memory=np.reshape(b_memory, [batch_size * trace_length, 4])
+        b_memory=np.reshape(np.array(b_memory), [batch_size * trace_length, 4])
         return b_idx, b_memory, ISWeights
 
     def batch_update(self, tree_idx, abs_errors):
