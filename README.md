@@ -15,6 +15,10 @@ In the results, the steps is the number of consecutive (in terms of time) sample
 The results indicate that Stable + per is superior in terms of total rewards, as well as the stability of the action learne over time. 
 
 
+![alt text](https://github.com/gordon0803/autonomous_taxi_relocation/blob/master/results_log/effect_mask.png?raw=true)
+
+This shows the effectiveness of masking. Seems that masking the first 20 elements gives the best results. 
+
 ---------------------------------------------------------------------
 This is the repo for the autonomous taxi relocation project.
 
