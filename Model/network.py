@@ -67,8 +67,8 @@ class Qnetwork():
         self.actions = tf.placeholder(shape=[None], dtype=tf.int32)
         self.Qout = self.Value + tf.subtract(self.Advantage, tf.reduce_mean(self.Advantage, axis=1, keepdims=True), name=myScope+'_Qout')
         self.predict = tf.argmax(self.Qout, 1,name=myScope+'_prediction')
-        self.maskA = tf.zeros([self.batch_size, self.trainLength // 2])
-        self.maskB = tf.ones([self.batch_size, self.trainLength // 2])
+        self.maskA = tf.zeros([self.batch_size, 10])
+        self.maskB = tf.ones([self.batch_size, self.trainLength-10])
         self.actions_onehot = tf.one_hot(self.actions, N_station+1, dtype=tf.float32,name=myScope+'_onehot') #action +1, with the last action being station without any vehicles
         self.mask = tf.concat([self.maskA, self.maskB], 1)
         self.mask = tf.reshape(self.mask, [-1])
@@ -83,7 +83,7 @@ class Qnetwork():
         # half of the losses for each trace as per Lample & Chatlot 2016
         if prioritized:
             self.abs_errors = tf.reduce_mean(tf.reshape(tf.abs(self.targetQ - self.Q),shape=[self.batch_size,self.trainLength]),axis=1)
-            self.loss = tf.reduce_mean(self.ISWeights_new * self.td_error*self.mask,name=myScope+'_per_defineloss')
+            self.loss = tf.reduce_mean(self.td_error*self.mask,name=myScope+'_per_defineloss')
         else:
             self.loss = tf.reduce_mean(self.td_error * self.mask, name=myScope+'_defineloss')
 
@@ -118,11 +118,11 @@ class per_experience_buffer():
     epsilon = 0.00001  # small amount to avoid zero priority
     alpha = 0.6  # [0~1] convert the importance of TD error to priority
     beta = 0.4  # importance-sampling, from initial value increasing to 1
-    beta_increment_per_sampling = 0.00002
+    beta_increment_per_sampling = 0.6/(800*100)
     abs_err_upper = 1.  # clipped abs error
 
 
-    def __init__(self, capacity=10000):
+    def __init__(self, capacity=3000):
         self.tree = SumTree(capacity)
         self.capacity=capacity
 
@@ -132,7 +132,7 @@ class per_experience_buffer():
             max_p = self.abs_err_upper
         self.tree.add(max_p, transition)  # set the max p for new p
 
-    def sample(self, batch_size,trace_length):  #Seems hvae a bug at line 151?
+    def sample(self, batch_size,trace_length):
         b_idx, b_memory, ISWeights = np.empty((batch_size,), dtype=np.int32), [], np.empty((batch_size, trace_length))
         pri_seg = self.tree.total_p / batch_size  # priority segment
         self.beta = np.min([1., self.beta + self.beta_increment_per_sampling])  # max = 1
@@ -148,7 +148,7 @@ class per_experience_buffer():
             b_idx[i]=idx
             b_memory.append(data)
 
-        b_memory=np.reshape(np.array(b_memory), [batch_size * trace_length, 4])
+        b_memory=np.reshape(b_memory, [batch_size * trace_length, 4])
         return b_idx, b_memory, ISWeights
 
     def batch_update(self, tree_idx, abs_errors):
