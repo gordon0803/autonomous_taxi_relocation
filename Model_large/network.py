@@ -259,3 +259,17 @@ def compute_softmax(x):
     """Compute softmax values for each sets of scores in x."""
     e_x = np.exp(x - np.max(x))
     return e_x / e_x.sum()
+
+
+def condition(ctr,stand_agent,batch_size,trace_length):
+    return ctr < len(stand_agent)
+
+
+def train_batch(ctr,stand_agent,batch_size,trace_length):
+    #avoid overhead from tensorflow
+    trainBatch = stand_agent[ctr].buffer.sample(batch_size,trace_length)  # Get a random batch of experiences.
+
+# Below we perform the Double-DQN update to the target Q-values
+    stand_agent[ctr].train(trainBatch, trace_length, batch_size)
+    print('station:'+str(ctr)+' has been trained')
+    return ctr+1,stand_agent,batch_size,trace_length

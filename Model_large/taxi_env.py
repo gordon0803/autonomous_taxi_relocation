@@ -38,7 +38,7 @@ class taxi_agent():
         self.time_to_destination = 0
 
 class taxi_simulator():
-    def __init__(self, arrival_rate, OD_mat, dist_mat, time_mat, taxi_input):
+    def __init__(self, arrival_rate, OD_mat, dist_mat, time_mat, taxi_input,neighbors):
         # lamba is a vector of size 1 by N
         # OD_mat,dist_mat, and time_mat are list of list of size N by N
 
@@ -60,6 +60,9 @@ class taxi_simulator():
 
         #current action
         self.action=[0]*self.N #no action made
+
+        #neighbors
+        self.neighbors=neighbors
 
         self.passenger_qtime = [deque([])  for i in range(self.N)]  # each station has a list for counting waiting time of each passengers
         self.passenger_expect_wait = [deque([]) for i in range(self.N)]  # expected wait time of each passenger
@@ -308,12 +311,12 @@ class taxi_simulator():
 
 
         for i in range(self.N):
-            passenger_gap[i, i] = min(len(self.passenger_qtime[i]),max_passenger)/max_passenger
-            awaiting_pass[i]=min(len(self.passenger_qtime[i]),max_passenger)/max_passenger
-
-        for t in self.taxi_in_travel:
-            taxi_in_travel[t.origin, t.destination] += 1
-            incoming_taxi[t.destination]+=1
+             passenger_gap[i, i] = min(len(self.passenger_qtime[i]),max_passenger)/max_passenger
+        #     awaiting_pass[i]=min(len(self.passenger_qtime[i]),max_passenger)/max_passenger
+        #
+        # for t in self.taxi_in_travel:
+        #     taxi_in_travel[t.origin, t.destination] += 1
+        #     incoming_taxi[t.destination]+=1
 
         for t in self.taxi_in_relocation:
             if not t.origin==t.destination:  #self relocation will not count, viewed as stay

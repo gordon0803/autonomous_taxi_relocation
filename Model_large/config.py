@@ -4,8 +4,8 @@ import pickle
 
 TRAIN_CONFIG = {
     'batch_size':10,
-    'trace_length': 30,
-    'update_freq': 5,
+    'trace_length': 20,
+    'update_freq': 200,
     'y': .99,
     'startE':1,
     'endE':0.05,
@@ -20,7 +20,9 @@ TRAIN_CONFIG = {
     'max_epLength':1000, #The max allowed length of our episode.
     'pre_train_steps':20000, #How many steps of random actions before traning begins
     'softmax_action':False, #use softmax or not
-    'silent': 0 #0 for print, 1 for no print
+    'silent': 0, #0 for print, 1 for no print
+    'use_RG':1, #use relocation graph or not
+    'use_tracker':0 #use system tracker or not
 }
 
 

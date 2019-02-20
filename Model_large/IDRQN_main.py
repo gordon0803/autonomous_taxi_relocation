@@ -1,10 +1,11 @@
-#Xinwu Qian 2019-02-06
+# Xinwu Qian 2019-02-06
 
-#This implements independent q learning approach
-use_gpu=0
+# This implements independent q learning approach
+use_gpu = 0
 import os
 import config
 import taxi_env as te
+import taxi_util as tu
 import time
 from datetime import datetime
 import pickle
@@ -14,58 +15,61 @@ import network
 import DRQN_agent
 from system_tracker import system_tracker
 
-if use_gpu==0:
+if use_gpu == 0:
     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
-
-#force on gpu
+# force on gpu
 config1 = tf.ConfigProto()
 config1.gpu_options.allow_growth = False
 
-reward_out=open('log/IDRQN_reward_log_'+datetime.now().strftime('%Y-%m-%d %H-%M-%S')+'.csv', 'w+')
+reward_out = open('log/IDRQN_reward_log_' + datetime.now().strftime('%Y-%m-%d %H-%M-%S') + '.csv', 'w+')
 
+with open('simulation_input.dat', 'rb') as fp:
+    simulation_input = pickle.load(fp)
 
-with open('simulation_input.dat','rb') as fp:
-	simulation_input=pickle.load(fp)
+# ------------------Parameter setting-----------------------
+N_station = simulation_input['N_station']
+OD_mat = simulation_input['OD_mat']
+distance = simulation_input['distance']
+travel_time = simulation_input['travel_time']
+arrival_rate = simulation_input['arrival_rate']
+taxi_input = simulation_input['taxi_input']
 
-#------------------Parameter setting-----------------------
-N_station=simulation_input['N_station']
-OD_mat=simulation_input['OD_mat']
-distance=simulation_input['distance']
-travel_time=simulation_input['travel_time']
-arrival_rate=simulation_input['arrival_rate']
-taxi_input=simulation_input['taxi_input']
-
-
-#Setting the training parameters
+# Setting the training parameters
 batch_size = config.TRAIN_CONFIG['batch_size']
-trace_length = config.TRAIN_CONFIG['trace_length'] #How long each experience trace will be when training
-update_freq = config.TRAIN_CONFIG['update_freq'] #How often to perform a training step.
-y = config.TRAIN_CONFIG['y'] #Discount factor on the target Q-values
-startE =config.TRAIN_CONFIG['startE'] #Starting chance of random action
-endE = config.TRAIN_CONFIG['endE'] #Final chance of random action
-anneling_steps =config.TRAIN_CONFIG['anneling_steps'] #How many steps of training to reduce startE to endE.
-num_episodes = config.TRAIN_CONFIG['num_episodes'] #How many episodes of game environment to train network with.
-load_model = config.TRAIN_CONFIG['load_model'] #Whether to load a saved model.
-warmup_time=config.TRAIN_CONFIG['warmup_time'];
-path = "./drqn" #The path to save our model to.
+trace_length = config.TRAIN_CONFIG['trace_length']  # How long each experience trace will be when training
+update_freq = config.TRAIN_CONFIG['update_freq']  # How often to perform a training step.
+y = config.TRAIN_CONFIG['y']  # Discount factor on the target Q-values
+startE = config.TRAIN_CONFIG['startE']  # Starting chance of random action
+endE = config.TRAIN_CONFIG['endE']  # Final chance of random action
+anneling_steps = config.TRAIN_CONFIG['anneling_steps']  # How many steps of training to reduce startE to endE.
+num_episodes = config.TRAIN_CONFIG['num_episodes']  # How many episodes of game environment to train network with.
+load_model = config.TRAIN_CONFIG['load_model']  # Whether to load a saved model.
+warmup_time = config.TRAIN_CONFIG['warmup_time'];
+path = "./drqn"  # The path to save our model to.
 h_size = config.TRAIN_CONFIG['h_size']
 max_epLength = config.TRAIN_CONFIG['max_epLength']
-pre_train_steps = max_epLength*25 #How many steps of random actions before training begins.
-softmax_action=config.TRAIN_CONFIG['softmax_action']
-silent=config.TRAIN_CONFIG['silent'] #do not print training time
-prioritized=config.TRAIN_CONFIG['prioritized']
+pre_train_steps = max_epLength * 25  # How many steps of random actions before training begins.
+softmax_action = config.TRAIN_CONFIG['softmax_action']
+silent = config.TRAIN_CONFIG['silent']  # do not print training time
+prioritized = config.TRAIN_CONFIG['prioritized']
 
-tau = 0.001
+# include the neighbors extracted from RG
+if config.TRAIN_CONFIG['use_RG'] == 1:
+    neighbors = tu.extract_neighbors(simulation_input['RG'], N_station)
+else:
+    temp=[i for i in range(N_station)]
+    neighbors = [temp for i in range(N_station)]
 
+tau = 0.02
 
-#--------------Simulation initialization
+# --------------Simulation initialization
 sys_tracker = system_tracker()
 sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station)
-env=te.taxi_simulator(arrival_rate,OD_mat,distance,travel_time,taxi_input)
+env = te.taxi_simulator(arrival_rate, OD_mat, distance, travel_time, taxi_input,neighbors)
 env.reset()
 print('System Successfully Initialized!')
-#------------------Train the network-----------------------
+# ------------------Train the network-----------------------
 
 
 # Set the rate of random action decrease.
@@ -77,9 +81,8 @@ jList = []
 rList = []
 total_steps = 0
 
-
-#network number
-nn=0
+# network number
+nn = 0
 # Make a path for our model to be saved in.
 if not os.path.exists(path):
     os.makedirs(path)
@@ -99,14 +102,13 @@ with tf.Session(config=config1) as sess:
     # targetOps=[]
 
     for station in range(N_station):
-        stand_agent.append(DRQN_agent.drqn_agent(str(station), N_station, h_size, tau,sess,batch_size,trace_length,prioritized=prioritized,is_gpu=use_gpu))
+        stand_agent.append(DRQN_agent.drqn_agent(str(station), N_station, h_size, tau, sess, batch_size, trace_length,
+                                                 prioritized=prioritized, is_gpu=use_gpu))
 
-    global_init=tf.global_variables_initializer()
+    global_init = tf.global_variables_initializer()
     # writer = tf.summary.FileWriter('./graphs', sess.graph)
     # writer.close()
     sess.run(global_init)
-
-
 
     for i in range(num_episodes):
         episodeBuffer = [[] for station in range(N_station)]
@@ -114,7 +116,7 @@ with tf.Session(config=config1) as sess:
         # Reset environment and get first new observation
         env.reset()
         # return the current state of the system
-        sP, tempr,temprp = env.get_state()
+        sP, tempr, temprp = env.get_state()
         # process the state into a list
         s = network.processState(sP, N_station)
 
@@ -132,7 +134,7 @@ with tf.Session(config=config1) as sess:
             # for all the stations, act greedily
             # Choose an action by greedily (with e chance of random action) from the Q-network
 
-            a=[-1]*N_station
+            a = [-1] * N_station
 
             if softmax_action == True:  # use softmax
                 for station in range(N_station):
@@ -148,27 +150,30 @@ with tf.Session(config=config1) as sess:
                 if np.random.rand(1) < e or total_steps < pre_train_steps:
                     for station in range(N_station):
                         if env.taxi_in_q[station]:
-                            a[station] = np.random.randint(0, N_station)  # random actions for each station
+                            action=np.random.choice(env.neighbors[station])
+                            a[station] = action  # random actions for each station
 
 
 
                 else:
                     for station in range(N_station):
                         if env.taxi_in_q[station]:
-                            a1 = stand_agent[station].predict(s)[0]
+                            a1 = stand_agent[station].predict(s,env.neighbors[station])
                             a[station] = a1  # action performed by DRQN
-                            if a[station]==N_station:
-                                a[station]=station
+                            if a[station] == N_station:
+                                a[station] = station
 
-            sys_tracker.record(s, a)
+            if config.TRAIN_CONFIG['use_tracker']:
+                sys_tracker.record(s, a)
+
             # move to the next step based on action selected
             ssp, lfp = env.step(a)
-            total_serve+=ssp
-            total_leave+=lfp
+            total_serve += ssp
+            total_leave += lfp
 
             # get state and reward
 
-            s1P, r,rp = env.get_state()
+            s1P, r, rp = env.get_state()
             s1 = network.processState(s1P, N_station)
 
             total_steps += 1
@@ -179,25 +184,27 @@ with tf.Session(config=config1) as sess:
                     e -= stepDrop
             # episode buffer
             # we don't store the initial 200 steps of the simulation, as warm up periods
-            if j>warmup_time:
-                t1=time.time()
+            if j > warmup_time:
+                t1 = time.time()
                 for station in range(N_station):
-                #we penalize the reward to motivate long term benefits
+                    # we penalize the reward to motivate long term benefits
                     # newr=r+rp[a[station]]  #system reward + shared reward
-                    newr=r
-                    #only record the buffer for the chosen agent
-                    if a[station]==-1:
-                        newr=0
-                        a[station]=N_station
-                    episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1]), [1, 4])) #use a[nn] for action taken by that specific agent
-                    if total_steps > pre_train_steps and j>warmup_time:
+                    newr = r
+                    # only record the buffer for the chosen agent
+                    if a[station] == -1:
+                        newr = 0
+                        a[station] = N_station
+                    episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1]), [1,
+                                                                                                   4]))  # use a[nn] for action taken by that specific agent
+                    if total_steps > pre_train_steps and j > warmup_time:
                         # start training here
-                        #We train the selected agent
+                        # We train the selected agent
                         if total_steps % (update_freq) == 0:
-                            stand_agent[station].update_target_net() #soft update target network
+                            stand_agent[station].update_target_net()  # soft update target network
                             # Reset the recurrent layer's hidden state
                             if prioritized:
-                                tree_idx, trainBatch, ISWeights = stand_agent[nn].buffer.sample(batch_size,trace_length)
+                                tree_idx, trainBatch, ISWeights = stand_agent[nn].buffer.sample(batch_size,
+                                                                                                trace_length)
                                 abs_error = stand_agent[nn].per_train(trainBatch, trace_length, batch_size, ISWeights)
                                 stand_agent[nn].buffer.batch_update(tree_idx, abs_error)
 
@@ -207,30 +214,31 @@ with tf.Session(config=config1) as sess:
                                 # Below we perform the Double-DQN update to the target Q-values
                                 stand_agent[nn].train(trainBatch, trace_length, batch_size)
 
-
                 # update reward after the warm up period
                 rAll += r
-                if total_steps > pre_train_steps and total_steps % (update_freq)  == 0 and silent==0:
-                    print('training time:',time.time()-t1)
+                if total_steps > pre_train_steps and total_steps % (update_freq) == 0 and silent == 0:
+                    print('training time:', time.time() - t1)
             # swap state
             s = s1
             sP = s1P
 
-
         # Add the episode to the experience buffer
         for station in range(N_station):
             bufferArray = np.array(episodeBuffer[station])
-            tempArray=[]
-            #now we break this bufferArray into tiny steps, according to the step length
-            #lets allow overlapping for halp of the segment
-            #e.g., if trace_length=20, we store [0-19] and [10-29]....keep this
-            for point in range(2*(len(bufferArray)+ 1 - trace_length)//trace_length):
-                stand_agent[station].remember(bufferArray[(point*(trace_length//2)):(point*(trace_length//2) + trace_length)])
+            tempArray = []
+            # now we break this bufferArray into tiny steps, according to the step length
+            # lets allow overlapping for halp of the segment
+            # e.g., if trace_length=20, we store [0-19] and [10-29]....keep this
+            for point in range(2 * (len(bufferArray) + 1 - trace_length) // trace_length):
+                stand_agent[station].remember(
+                    bufferArray[(point * (trace_length // 2)):(point * (trace_length // 2) + trace_length)])
 
         jList.append(j)
         rList.append(rAll)  # reward in this episode
-        print('Episode:', i, ', totalreward:', rAll, ', total serve:',total_serve,', total leave:',total_leave,', terminal_taxi_distribution:',[len(v) for v in env.taxi_in_q],', terminal_passenger:',[len(v) for v in env.passenger_qtime],e)
-        reward_out.write(str(i)+','+str(rAll)+'\n')
+        print('Episode:', i, ', totalreward:', rAll, ', total serve:', total_serve, ', total leave:', total_leave,
+              ', terminal_taxi_distribution:', [len(v) for v in env.taxi_in_q], ', terminal_passenger:',
+              [len(v) for v in env.passenger_qtime], e)
+        reward_out.write(str(i) + ',' + str(rAll) + '\n')
 
 
         # Periodically save the model.
@@ -239,8 +247,8 @@ with tf.Session(config=config1) as sess:
         #     print("Saved Model")
         # if len(rList) % summaryLength == 0 and len(rList) != 0:
         #     print(total_steps, np.mean(rList[-summaryLength:]), e)
-    #             saveToCenter(i,rList,jList,np.reshape(np.array(episodeBuffer),[len(episodeBuffer),5]),\
-#                 summaryLength,h_size,sess,mainQN,time_per_step)
+        #             saveToCenter(i,rList,jList,np.reshape(np.array(episodeBuffer),[len(episodeBuffer),5]),\
+# summaryLength,h_size,sess,mainQN,time_per_step)
 # saver.save(sess,path+'/model-'+str(i)+'.cptk')
 reward_out.close()
 sys_tracker.save('IDRQN')

@@ -70,10 +70,13 @@ class drqn_agent():
 
         network.updateTarget(self.targetOps, self.sess)
 
-    def predict(self, s):
+    def predict(self, s,neighbors):
         # make the prediction
-        action = self.sess.run(self.mainQN.predict, feed_dict={self.mainQN.scalarInput: [s], self.mainQN.trainLength: 1, \
+        Qvalue = self.sess.run(self.mainQN.Qout, feed_dict={self.mainQN.scalarInput: [s], self.mainQN.trainLength: 1, \
                                                                self.mainQN.batch_size: 1})
+        Qvalue=np.array(Qvalue[0])
+        id=np.argmax(Qvalue[neighbors])
+        action=neighbors[id]
 
         return action
 

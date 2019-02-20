@@ -10,6 +10,7 @@ import GREEDY_agent
 import network
 import time
 import math
+import taxi_util as tu
 import config
 import pickle
 from system_tracker import system_tracker
@@ -33,9 +34,16 @@ arrival_rate=simulation_input['arrival_rate']
 taxi_input=simulation_input['taxi_input']
 print(arrival_rate)
 
+
+if config.TRAIN_CONFIG['use_RG'] == 1:
+    neighbors = tu.extract_neighbors(simulation_input['RG'], N_station)
+else:
+    temp=[i for i in range(N_station)]
+    neighbors = [temp for i in range(N_station)]
+
 sys_tracker = system_tracker()
 sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station)
-env=te.taxi_simulator(arrival_rate,OD_mat,distance,travel_time,taxi_input)
+env=te.taxi_simulator(arrival_rate,OD_mat,distance,travel_time,taxi_input,neighbors)
 env.reset()
 print('System Successfully Initialized!')
 
@@ -45,7 +53,8 @@ warmup_time=config.TRAIN_CONFIG['warmup_time'];
 max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength*50 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
-softmax_action=True
+softmax_action=False
+
 
 #------------------Train the network-----------------------
 
