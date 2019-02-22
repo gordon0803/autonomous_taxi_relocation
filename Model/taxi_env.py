@@ -7,6 +7,7 @@
 import numpy as np
 import taxi_util as util
 from collections import deque
+import math
 
 
 
@@ -60,6 +61,7 @@ class taxi_simulator():
 
         #current action
         self.action=[0]*self.N #no action made
+
 
         self.passenger_qtime = [deque([])  for i in range(self.N)]  # each station has a list for counting waiting time of each passengers
         self.passenger_expect_wait = [deque([]) for i in range(self.N)]  # expected wait time of each passenger
@@ -279,6 +281,9 @@ class taxi_simulator():
         self.previous_action=[-1]*self.N #no action made
         self.current_action=[-1]*self.N
 
+        #probability of getting a passenger at a particular station
+        self.score=[1]*self.N
+
 
     def get_state(self):
         # give the states of the system after all the executions
@@ -304,13 +309,13 @@ class taxi_simulator():
                 previous_action[i,self.previous_action[i]]=1
 
 
-        self.previous_action=self.current_action #swap 
+        self.previous_action=self.current_action #swap
 
 
         for i in range(self.N):
             passenger_gap[i, i] = min(len(self.passenger_qtime[i]),max_passenger)/max_passenger
             awaiting_pass[i]=min(len(self.passenger_qtime[i]),max_passenger)/max_passenger
-
+        #
         for t in self.taxi_in_travel:
             taxi_in_travel[t.origin, t.destination] += 1
             incoming_taxi[t.destination]+=1
@@ -338,18 +343,32 @@ class taxi_simulator():
         # reward
         total_taxi_in_travel = taxi_in_travel.sum()
         total_taxi_in_relocation = taxi_in_relocation.sum()
-        reward = total_taxi_in_travel - total_taxi_in_relocation
+        reward = (2*total_taxi_in_travel-total_taxi_in_relocation)/2
 
 
-        #penalty reward
-        reward_penalty=[safe_div(awaiting_pass[i],incoming_taxi[i]) for i in range(self.N)] #incoming taxis share the reward
+        #calculate linear features and scores
+        feature=[]
+        score=[]
+        for i in range(self.N):
+            feature+=[passenger_gap[i,i],taxi_in_q[i,i],taxi_in_relocation[:,i].sum(),taxi_in_travel[:,i].sum()]
+            #update score
+            if self.taxi_in_q[i]: #drivers waiting passengers
+                self.score[i]*=sigmoid(-len(self.taxi_in_q[i]))
+            else:
+                self.score[i]*=sigmoid(len(self.passenger_qtime[i]))
+                self.score[i]=min(self.score[i],1) #bound to [0,1]
 
-        # reward = total_taxi_in_travel
+            score.append(self.score[i])
 
-        return state, reward, reward_penalty
+
+
+        return state, reward, feature,score
 
 
 def safe_div(x,y):
     if y == 0:
         return 0
     return x / y
+
+def sigmoid(x):
+    return 0.95+0.1/(1+math.exp(-x))

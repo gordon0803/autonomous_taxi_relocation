@@ -3,8 +3,21 @@ import tensorflow.contrib.slim as slim
 import numpy as np
 import random
 
+class linear_model():
+    def __init__(self,N_station):
+        #define the linear model to distinguish among actions
+        self.W=tf.Variable(tf.constant(1/N_station,shape=[N_station*4,N_station]),name='linear_params')
+        self.linear_X=tf.placeholder(shape=[None,N_station*4],dtype=tf.float32,name='linear_params_X')
+        self.linear_Y = tf.placeholder(shape=[None, N_station], dtype=tf.float32,name='linear_params_Y')
+        self.linear_Yh=tf.matmul(self.linear_X,self.W) #linear model
+        self.linear_loss=tf.reduce_mean(tf.square(self.linear_Yh-self.linear_Y))
+        self.linear_opt=tf.train.GradientDescentOptimizer(0.02)
+        self.linear_update=self.linear_opt.minimize(self.linear_loss,name='linear_train')
+
+
+
 class Qnetwork():
-    def __init__(self, N_station, h_size, batch_size,train_length, myScope, is_gpu=0,prioritized=0):
+    def __init__(self, N_station, h_size, batch_size,train_length, myScope,  is_gpu=0,prioritized=0):
         # The network recieves a frame from the game, flattened into an array.
         # It then resizes it and processes it through four convolutional layers.
 
@@ -24,14 +37,11 @@ class Qnetwork():
             kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
              name=myScope + '_net_conv2'))
 
-        # self.conv3 = tf.nn.relu(tf.layers.conv2d( \
-        #    inputs=self.conv2, filters=64, \
-        #    kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
-        #     name=myScope + '_net_conv3'))
+
 
         # self.conv4 = tf.nn.relu(tf.layers.conv2d( \
         #     inputs=self.conv3, filters=64, \
-        #     kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
+        #     kernel_size=[3, 3], strides=[2, 2], padding='VALID', \
         #      name=myScope + '_net_conv4'),name=myScope+'_net_relu4')
 
         self.trainLength = tf.placeholder(dtype=tf.int32,name=myScope+'_trainlength')
@@ -67,8 +77,8 @@ class Qnetwork():
         self.actions = tf.placeholder(shape=[None], dtype=tf.int32)
         self.Qout = self.Value + tf.subtract(self.Advantage, tf.reduce_mean(self.Advantage, axis=1, keepdims=True), name=myScope+'_Qout')
         self.predict = tf.argmax(self.Qout, 1,name=myScope+'_prediction')
-        self.maskA = tf.zeros([self.batch_size, 10])
-        self.maskB = tf.ones([self.batch_size, self.trainLength-10])
+        self.maskA = tf.zeros([self.batch_size, 20]) #Mask first 20 records are shown to have the best results
+        self.maskB = tf.ones([self.batch_size, self.trainLength-20])
         self.actions_onehot = tf.one_hot(self.actions, N_station+1, dtype=tf.float32,name=myScope+'_onehot') #action +1, with the last action being station without any vehicles
         self.mask = tf.concat([self.maskA, self.maskB], 1)
         self.mask = tf.reshape(self.mask, [-1])
@@ -110,7 +120,7 @@ class experience_buffer():
         for episode in sampled_episodes:
             sampledTraces.append(episode)
         sampledTraces = np.array(sampledTraces)
-        return np.reshape(sampledTraces, [batch_size * trace_length, 4])
+        return np.reshape(sampledTraces, [batch_size * trace_length, 6])
 
 
 #prioritized experience buffer
@@ -259,3 +269,17 @@ def compute_softmax(x):
     """Compute softmax values for each sets of scores in x."""
     e_x = np.exp(x - np.max(x))
     return e_x / e_x.sum()
+
+
+def condition(ctr,stand_agent,batch_size,trace_length):
+    return ctr < len(stand_agent)
+
+
+def train_batch(ctr,stand_agent,batch_size,trace_length):
+    #avoid overhead from tensorflow
+    trainBatch = stand_agent[ctr].buffer.sample(batch_size,trace_length)  # Get a random batch of experiences.
+
+# Below we perform the Double-DQN update to the target Q-values
+    stand_agent[ctr].train(trainBatch, trace_length, batch_size)
+    print('station:'+str(ctr)+' has been trained')
+    return ctr+1,stand_agent,batch_size,trace_length

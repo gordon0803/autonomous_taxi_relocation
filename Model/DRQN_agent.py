@@ -70,11 +70,18 @@ class drqn_agent():
 
         network.updateTarget(self.targetOps, self.sess)
 
-    def predict(self, s):
+    def predict(self, s,feature,linear_model):
         # make the prediction
-        action = self.sess.run(self.mainQN.predict, feed_dict={self.mainQN.scalarInput: [s], self.mainQN.trainLength: 1, \
+        Qvalue = self.sess.run(self.mainQN.Qout, feed_dict={self.mainQN.scalarInput: [s], self.mainQN.trainLength: 1, \
                                                                self.mainQN.batch_size: 1})
 
+        predict_score=self.sess.run(linear_model.linear_Yh,feed_dict={linear_model.linear_X:[feature]})
+        Qvalue=np.array(Qvalue[0])
+        threshold=0.15;
+        legible=np.append(predict_score>threshold,True)
+        action=np.argmax(Qvalue*legible)
+        # if action!=action1:
+        #     print(Qvalue,action1,action,predict_score)
         return action
 
     def predict_softmax(self, s):
@@ -111,6 +118,8 @@ class drqn_agent():
                       feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 0]), self.mainQN.targetQ: targetQ, \
                                  self.mainQN.actions: trainBatch[:, 1], self.mainQN.trainLength: trace_length, \
                                  self.mainQN.batch_size: batch_size})
+
+
 
 
     def per_train(self, trainBatch, trace_length, batch_size,ISWeights):
