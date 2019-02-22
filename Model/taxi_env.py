@@ -343,7 +343,7 @@ class taxi_simulator():
         # reward
         total_taxi_in_travel = taxi_in_travel.sum()
         total_taxi_in_relocation = taxi_in_relocation.sum()
-        reward = (2*total_taxi_in_travel-total_taxi_in_relocation)/2
+        reward = 2*total_taxi_in_travel-total_taxi_in_relocation
 
 
         #calculate linear features and scores

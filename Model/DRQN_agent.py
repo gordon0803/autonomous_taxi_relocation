@@ -70,18 +70,27 @@ class drqn_agent():
 
         network.updateTarget(self.targetOps, self.sess)
 
-    def predict(self, s,feature,linear_model):
+    def predict(self, s,predict_score,e,station):
         # make the prediction
-        Qvalue = self.sess.run(self.mainQN.Qout, feed_dict={self.mainQN.scalarInput: [s], self.mainQN.trainLength: 1, \
-                                                               self.mainQN.batch_size: 1})
+        if e>0.8:
+            threshold=1-e
+        else:
+            threshold=0.2;
+        legible = predict_score >= threshold
 
-        predict_score=self.sess.run(linear_model.linear_Yh,feed_dict={linear_model.linear_X:[feature]})
-        Qvalue=np.array(Qvalue[0])
-        threshold=0.15;
-        legible=np.append(predict_score>threshold,True)
-        action=np.argmax(Qvalue*legible)
-        # if action!=action1:
-        #     print(Qvalue,action1,action,predict_score)
+        if np.random.rand(1)<e: #epsilon greedy
+            idx=[i for i, x in enumerate(legible) if x]
+            if station not in idx:
+                idx.append(station)
+            action=np.random.choice(idx)
+
+        else:
+            Qvalue = self.sess.run(self.mainQN.Qout, feed_dict={self.mainQN.scalarInput: [s], self.mainQN.trainLength: 1, self.mainQN.batch_size: 1})
+            Qvalue=np.array(Qvalue[0])
+            legible=np.append(predict_score>threshold,True)
+            legible[station]=True
+            action=np.argmax(Qvalue*legible)
+
         return action
 
     def predict_softmax(self, s):
@@ -97,21 +106,23 @@ class drqn_agent():
 
         return state1
 
-    def train(self, trainBatch, trace_length, batch_size):
+    def train(self, trainBatch, trace_length, batch_size,linear_model,e,station):
         # use double DQN as the training step
         # Use main net to make a prediction
 
         Q1 = self.sess.run(self.mainQN.predict, feed_dict={ \
             self.mainQN.scalarInput: np.vstack(trainBatch[:, 3]), self.mainQN.trainLength: trace_length, \
             self.mainQN.batch_size: batch_size})
+
         # Use target network to evaluate outputred
         Q2 = self.sess.run(self.targetQN.Qout, feed_dict={ \
             self.targetQN.scalarInput: np.vstack(trainBatch[:, 3]), \
             self.targetQN.trainLength: trace_length, self.targetQN.batch_size: batch_size})
 
+
         # Metl the Q value to obtain the target Q value
         doubleQ = Q2[range(batch_size * trace_length), Q1]
-        targetQ = trainBatch[:, 2] + (.99 * doubleQ)  # .99 is the discount for doubleQ value
+        targetQ = trainBatch[:, 2] + (.8 * doubleQ)  # .99 is the discount for doubleQ value
 
         # update network parameters with the predefined training method
         self.sess.run(self.mainQN.updateModel, \

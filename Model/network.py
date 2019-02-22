@@ -6,12 +6,21 @@ import random
 class linear_model():
     def __init__(self,N_station):
         #define the linear model to distinguish among actions
+
         self.W=tf.Variable(tf.constant(1/N_station,shape=[N_station*4,N_station]),name='linear_params')
         self.linear_X=tf.placeholder(shape=[None,N_station*4],dtype=tf.float32,name='linear_params_X')
+        self.linear_X_reshape = tf.reshape(self.linear_X, shape=[-1, N_station*4])
         self.linear_Y = tf.placeholder(shape=[None, N_station], dtype=tf.float32,name='linear_params_Y')
-        self.linear_Yh=tf.matmul(self.linear_X,self.W) #linear model
-        self.linear_loss=tf.reduce_mean(tf.square(self.linear_Yh-self.linear_Y))
-        self.linear_opt=tf.train.GradientDescentOptimizer(0.02)
+
+        self.l1_regularizer = tf.contrib.layers.l1_regularizer(
+            scale=0.01, scope=None
+        )
+        self.weights = tf.trainable_variables(scope='linear_params')  # all vars of your graph
+        self.regularization_penalty = tf.contrib.layers.apply_regularization(self.l1_regularizer, self.weights)
+
+        self.linear_Yh=tf.matmul(self.linear_X_reshape,self.W) #linear model
+        self.linear_loss=tf.reduce_mean(tf.square(self.linear_Yh-self.linear_Y))+self.regularization_penalty
+        self.linear_opt=tf.train.GradientDescentOptimizer(0.05)
         self.linear_update=self.linear_opt.minimize(self.linear_loss,name='linear_train')
 
 

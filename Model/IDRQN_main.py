@@ -49,13 +49,13 @@ warmup_time = config.TRAIN_CONFIG['warmup_time'];
 path = "./drqn"  # The path to save our model to.
 h_size = config.TRAIN_CONFIG['h_size']
 max_epLength = config.TRAIN_CONFIG['max_epLength']
-pre_train_steps = max_epLength * 25  # How many steps of random actions before training begins.
+pre_train_steps = max_epLength * 10  # How many steps of random actions before training begins.
 softmax_action = config.TRAIN_CONFIG['softmax_action']
 silent = config.TRAIN_CONFIG['silent']  # do not print training time
 prioritized = config.TRAIN_CONFIG['prioritized']
 
 
-tau = 0.02
+tau = 0.1
 
 # --------------Simulation initialization
 sys_tracker = system_tracker()
@@ -142,21 +142,13 @@ with tf.Session(config=config1) as sess:
 
 
             else:  # use e-greedy
-                if np.random.rand(1) < e or total_steps < pre_train_steps:
-                    for station in range(N_station):
-                        if env.taxi_in_q[station]:
-                            action=np.random.randint(0,N_station)
-                            a[station] = action  # random actions for each station
-
-
-
-                else:
-                    for station in range(N_station):
-                        if env.taxi_in_q[station]:
-                            a1 = stand_agent[station].predict(s,feature,linear_model)
-                            a[station] = a1  # action performed by DRQN
-                            if a[station] == N_station:
-                                a[station] = station
+                predict_score = sess.run(linear_model.linear_Yh, feed_dict={linear_model.linear_X: [feature]})
+                for station in range(N_station):
+                    if env.taxi_in_q[station]:
+                        a1 = stand_agent[station].predict(s,predict_score[0],e,station)
+                        a[station] = a1  # action performed by DRQN
+                        if a[station] == N_station:
+                            a[station] = station
 
             if config.TRAIN_CONFIG['use_tracker']:
                 sys_tracker.record(s, a)
@@ -207,9 +199,9 @@ with tf.Session(config=config1) as sess:
                                 trainBatch = stand_agent[station].buffer.sample(batch_size,
                                                                            trace_length)  # Get a random batch of experiences.
                                 # Below we perform the Double-DQN update to the target Q-values
-                                stand_agent[station].train(trainBatch, trace_length, batch_size)
+                                stand_agent[station].train(trainBatch, trace_length, batch_size,linear_model,e,station)
                                 #just train once
-                                if station==0 and config.TRAIN_CONFIG['use_linear']:
+                                if station%5==0 and config.TRAIN_CONFIG['use_linear']:
                                     linear_buffer= stand_agent[station].buffer.sample(batch_size,
                                                                                               trace_length)  # Get a random batch of experiences.
 

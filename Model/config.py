@@ -3,9 +3,9 @@ import demand_gen
 import pickle
 
 TRAIN_CONFIG = {
-    'batch_size':32,
+    'batch_size':16,
     'trace_length': 30,
-    'update_freq': 100,
+    'update_freq': 50,
     'y': .99,
     'startE':1,
     'endE':0.05,
