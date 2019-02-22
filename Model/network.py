@@ -129,7 +129,7 @@ class experience_buffer():
         for episode in sampled_episodes:
             sampledTraces.append(episode)
         sampledTraces = np.array(sampledTraces)
-        return np.reshape(sampledTraces, [batch_size * trace_length, 6])
+        return np.reshape(sampledTraces, [batch_size * trace_length, 7])
 
 
 #prioritized experience buffer

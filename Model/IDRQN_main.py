@@ -181,8 +181,8 @@ with tf.Session(config=config1) as sess:
                     if a[station] == -1:
                         newr = 0
                         a[station] = N_station
-                    episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1,feature,score]), [1,
-                                                                                                   6]))  # use a[nn] for action taken by that specific agent
+                    episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1,feature,score,featurep]), [1,
+                                                                                                   7]))  # use a[nn] for action taken by that specific agent
                     if total_steps > pre_train_steps and j > warmup_time:
                         # start training here
                         # We train the selected agent
@@ -199,7 +199,7 @@ with tf.Session(config=config1) as sess:
                                 trainBatch = stand_agent[station].buffer.sample(batch_size,
                                                                            trace_length)  # Get a random batch of experiences.
                                 # Below we perform the Double-DQN update to the target Q-values
-                                stand_agent[station].train(trainBatch, trace_length, batch_size,linear_model,e,station)
+                                stand_agent[station].train(trainBatch, trace_length, batch_size,linear_model,e,station,N_station)
                                 #just train once
                                 if station%5==0 and config.TRAIN_CONFIG['use_linear']:
                                     linear_buffer= stand_agent[station].buffer.sample(batch_size,
