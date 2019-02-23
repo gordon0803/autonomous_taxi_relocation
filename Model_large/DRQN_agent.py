@@ -70,13 +70,26 @@ class drqn_agent():
 
         network.updateTarget(self.targetOps, self.sess)
 
-    def predict(self, s,neighbors):
+    def predict(self, s,predict_score,e,station):
         # make the prediction
-        Qvalue = self.sess.run(self.mainQN.Qout, feed_dict={self.mainQN.scalarInput: [s], self.mainQN.trainLength: 1, \
-                                                               self.mainQN.batch_size: 1})
-        Qvalue=np.array(Qvalue[0])
-        id=np.argmax(Qvalue[neighbors])
-        action=neighbors[id]
+        if e>0.8:
+            threshold=1-e
+        else:
+            threshold=0.2;
+        legible = predict_score >= threshold
+
+        if np.random.rand(1)<e: #epsilon greedy
+            idx=[i for i, x in enumerate(legible) if x]
+            if station not in idx:
+                idx.append(station)
+            action=np.random.choice(idx)
+
+        else:
+            Qvalue = self.sess.run(self.mainQN.Qout, feed_dict={self.mainQN.scalarInput: [s], self.mainQN.trainLength: 1, self.mainQN.batch_size: 1})
+            Qvalue=np.array(Qvalue[0])
+            legible=np.append(predict_score>threshold,True)
+            legible[station]=True
+            action=np.argmax(Qvalue*legible)
 
         return action
 
@@ -93,27 +106,43 @@ class drqn_agent():
 
         return state1
 
-    def train(self, trainBatch, trace_length, batch_size):
+    def train(self, trainBatch, trace_length, batch_size,linear_model,e,station,N_station):
         # use double DQN as the training step
         # Use main net to make a prediction
 
-        Q1 = self.sess.run(self.mainQN.predict, feed_dict={ \
+        Q1 = self.sess.run(self.mainQN.Qout, feed_dict={ \
             self.mainQN.scalarInput: np.vstack(trainBatch[:, 3]), self.mainQN.trainLength: trace_length, \
             self.mainQN.batch_size: batch_size})
+
+        #prediction based on the optimal feasible values.
+        predict_score = self.sess.run(linear_model.linear_Yh, feed_dict={linear_model.linear_X: np.vstack(trainBatch[:,6])})
+        if e>0.8:
+            threshold=1-e
+        else:
+            threshold=0.2;
+        legible = predict_score >= threshold
+        legible_true=np.ones((batch_size*trace_length,N_station+1))
+        legible_true[:,:-1]=legible #assign value
+        legible_true[:,station] = True #change column value to legible solutions
+        Q1 = np.argmax(Q1 * legible_true, axis=1)
+
         # Use target network to evaluate outputred
         Q2 = self.sess.run(self.targetQN.Qout, feed_dict={ \
             self.targetQN.scalarInput: np.vstack(trainBatch[:, 3]), \
             self.targetQN.trainLength: trace_length, self.targetQN.batch_size: batch_size})
 
         # Metl the Q value to obtain the target Q value
+
         doubleQ = Q2[range(batch_size * trace_length), Q1]
-        targetQ = trainBatch[:, 2] + (.99 * doubleQ)  # .99 is the discount for doubleQ value
+        targetQ = trainBatch[:, 2] + (.8 * doubleQ)  # .99 is the discount for doubleQ value
 
         # update network parameters with the predefined training method
         self.sess.run(self.mainQN.updateModel, \
                       feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 0]), self.mainQN.targetQ: targetQ, \
                                  self.mainQN.actions: trainBatch[:, 1], self.mainQN.trainLength: trace_length, \
                                  self.mainQN.batch_size: batch_size})
+
+
 
 
     def per_train(self, trainBatch, trace_length, batch_size,ISWeights):

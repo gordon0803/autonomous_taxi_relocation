@@ -7,7 +7,6 @@ from collections import deque
 
 import networkx as nx
 import numpy as np
-import math
 
 
 def waiting_time_update(waiting_time,expect_waiting_time):
@@ -28,9 +27,7 @@ def RGraph(dist,arrive,depart):
     #arrive: N by 1 total arrival rate
     #depart: N by 1 total departure rate
     gap=np.array(arrive)-np.array(depart)
-    gap=gap*200;
     dist=np.array(dist)
-    dist=np.ceil(dist)
 
     N=len(arrive) #number of stations
 
@@ -46,19 +43,17 @@ def RGraph(dist,arrive,depart):
                 if i != j:
                     G[i, j] = 0
                     G[j, i] = 0
-                    dist[i,j]=1000 #very large number so no one will use it
-                    dist[j,i]=1000
+                    dist[i,j]=1e10 #very large number so no one will use it
+                    dist[j,i]=1e10
     #stands with positive and negative weights
     pos=[]
     neg=[]
-
     for i in range(N):
         if gap[i]>=0:
             pos.append(i)
         else:
             neg.append(i)
 
-    print(sum([gap[i] for i in pos]),sum([gap[i] for i in neg]))
     G1=nx.DiGraph()
     source=N;
     sink=N+1;
@@ -66,16 +61,15 @@ def RGraph(dist,arrive,depart):
     for i in range(N):
         for j in range(N):
             if i in pos and j in neg:
-            # if gap[i]>gap[j]:
-                if not G1.has_edge(i,j):
-                    G1.add_edge(i,j,capacity=min(math.ceil(abs(gap[i])),math.ceil(abs(gap[j]))),weight=dist[i,j])
+                G1.add_edge(i,j,weight=dist[i,j])
+                print(dist[i,j])
                 # G1.add_edge(j,i,weight=dist[j,i],capacity=1e10)
     #link source to pos:
     for i in range(N):
         if i in pos:
-            G1.add_edge(source,i,weight=0,capacity=math.ceil(abs(gap[i])))
+            G1.add_edge(source,i,weight=0,capacity=abs(gap[i]))
         elif i in neg:
-            G1.add_edge(i,sink,weight=0,capacity=math.ceil(abs(gap[i])))
+            G1.add_edge(i,sink,weight=0,capacity=abs(gap[i]))
 
     mincostflow=nx.max_flow_min_cost(G1,source,sink)
     # mincost=nx.cost_of_flow(G1,mincostflow)
@@ -95,17 +89,5 @@ def RGraph(dist,arrive,depart):
     N_edge_new=newG.sum();
     print("Number of edge reduced by:", N_edge_complete-N_edge_new)
     print("Number of edge reduced by:", N_edge_cp2 - N_edge_new)
-    print("Number of neighbors:",newG.sum(axis=0))
-    print(len(newG[0,:]))
-    print(gap)
     return newG
 
-
-def extract_neighbors(RG,Nstation):
-    neighbors=[[] for i in range(Nstation)]
-    for i in range(Nstation):
-        for j in range(Nstation):
-            if RG[i,j]==1:
-                neighbors[i].append(j)
-
-    return neighbors

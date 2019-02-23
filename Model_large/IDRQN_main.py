@@ -1,7 +1,7 @@
 # Xinwu Qian 2019-02-06
 
 # This implements independent q learning approach
-use_gpu = 0
+use_gpu = 1
 import os
 import config
 import taxi_env as te
@@ -20,7 +20,7 @@ if use_gpu == 0:
 
 # force on gpu
 config1 = tf.ConfigProto()
-config1.gpu_options.allow_growth = False
+config1.gpu_options.allow_growth = True
 
 reward_out = open('log/IDRQN_reward_log_' + datetime.now().strftime('%Y-%m-%d %H-%M-%S') + '.csv', 'w+')
 
@@ -49,24 +49,18 @@ warmup_time = config.TRAIN_CONFIG['warmup_time'];
 path = "./drqn"  # The path to save our model to.
 h_size = config.TRAIN_CONFIG['h_size']
 max_epLength = config.TRAIN_CONFIG['max_epLength']
-pre_train_steps = max_epLength * 25  # How many steps of random actions before training begins.
+pre_train_steps = max_epLength * 10  # How many steps of random actions before training begins.
 softmax_action = config.TRAIN_CONFIG['softmax_action']
 silent = config.TRAIN_CONFIG['silent']  # do not print training time
 prioritized = config.TRAIN_CONFIG['prioritized']
 
-# include the neighbors extracted from RG
-if config.TRAIN_CONFIG['use_RG'] == 1:
-    neighbors = tu.extract_neighbors(simulation_input['RG'], N_station)
-else:
-    temp=[i for i in range(N_station)]
-    neighbors = [temp for i in range(N_station)]
 
-tau = 0.02
+tau = 0.3
 
 # --------------Simulation initialization
 sys_tracker = system_tracker()
 sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station)
-env = te.taxi_simulator(arrival_rate, OD_mat, distance, travel_time, taxi_input,neighbors)
+env = te.taxi_simulator(arrival_rate, OD_mat, distance, travel_time, taxi_input)
 env.reset()
 print('System Successfully Initialized!')
 # ------------------Train the network-----------------------
@@ -100,7 +94,7 @@ with tf.Session(config=config1) as sess:
     # one DRQN per station is needed, different network requires a different scope (name)
     stand_agent = []
     # targetOps=[]
-
+    linear_model=network.linear_model(N_station)
     for station in range(N_station):
         stand_agent.append(DRQN_agent.drqn_agent(str(station), N_station, h_size, tau, sess, batch_size, trace_length,
                                                  prioritized=prioritized, is_gpu=use_gpu))
@@ -116,16 +110,17 @@ with tf.Session(config=config1) as sess:
         # Reset environment and get first new observation
         env.reset()
         # return the current state of the system
-        sP, tempr, temprp = env.get_state()
+        sP, tempr, featurep,score = env.get_state()
         # process the state into a list
         s = network.processState(sP, N_station)
+        feature=featurep
 
         rAll = 0
         j = 0
         total_serve = 0
         total_leave = 0
         # We train one station in one single episode, and hold it unchanged for other stations, and we keep rotating.
-        nn = i % N_station
+
 
         while j < max_epLength:
 
@@ -147,21 +142,13 @@ with tf.Session(config=config1) as sess:
 
 
             else:  # use e-greedy
-                if np.random.rand(1) < e or total_steps < pre_train_steps:
-                    for station in range(N_station):
-                        if env.taxi_in_q[station]:
-                            action=np.random.choice(env.neighbors[station])
-                            a[station] = action  # random actions for each station
-
-
-
-                else:
-                    for station in range(N_station):
-                        if env.taxi_in_q[station]:
-                            a1 = stand_agent[station].predict(s,env.neighbors[station])
-                            a[station] = a1  # action performed by DRQN
-                            if a[station] == N_station:
-                                a[station] = station
+                predict_score = sess.run(linear_model.linear_Yh, feed_dict={linear_model.linear_X: [feature]})
+                for station in range(N_station):
+                    if env.taxi_in_q[station]:
+                        a1 = stand_agent[station].predict(s,predict_score[0],e,station)
+                        a[station] = a1  # action performed by DRQN
+                        if a[station] == N_station:
+                            a[station] = station
 
             if config.TRAIN_CONFIG['use_tracker']:
                 sys_tracker.record(s, a)
@@ -173,7 +160,7 @@ with tf.Session(config=config1) as sess:
 
             # get state and reward
 
-            s1P, r, rp = env.get_state()
+            s1P, r, featurep,score = env.get_state()
             s1 = network.processState(s1P, N_station)
 
             total_steps += 1
@@ -194,8 +181,8 @@ with tf.Session(config=config1) as sess:
                     if a[station] == -1:
                         newr = 0
                         a[station] = N_station
-                    episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1]), [1,
-                                                                                                   4]))  # use a[nn] for action taken by that specific agent
+                    episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1,feature,score,featurep]), [1,
+                                                                                                   7]))  # use a[nn] for action taken by that specific agent
                     if total_steps > pre_train_steps and j > warmup_time:
                         # start training here
                         # We train the selected agent
@@ -203,16 +190,26 @@ with tf.Session(config=config1) as sess:
                             stand_agent[station].update_target_net()  # soft update target network
                             # Reset the recurrent layer's hidden state
                             if prioritized:
-                                tree_idx, trainBatch, ISWeights = stand_agent[nn].buffer.sample(batch_size,
+                                tree_idx, trainBatch, ISWeights = stand_agent[station].buffer.sample(batch_size,
                                                                                                 trace_length)
-                                abs_error = stand_agent[nn].per_train(trainBatch, trace_length, batch_size, ISWeights)
-                                stand_agent[nn].buffer.batch_update(tree_idx, abs_error)
+                                abs_error = stand_agent[station].per_train(trainBatch, trace_length, batch_size, ISWeights)
+                                stand_agent[station].buffer.batch_update(tree_idx, abs_error)
 
                             else:
-                                trainBatch = stand_agent[nn].buffer.sample(batch_size,
+                                trainBatch = stand_agent[station].buffer.sample(batch_size,
                                                                            trace_length)  # Get a random batch of experiences.
                                 # Below we perform the Double-DQN update to the target Q-values
-                                stand_agent[nn].train(trainBatch, trace_length, batch_size)
+                                stand_agent[station].train(trainBatch, trace_length, batch_size,linear_model,e,station,N_station)
+                                #just train once
+                                if station%5==0 and config.TRAIN_CONFIG['use_linear']:
+                                    linear_buffer= stand_agent[station].buffer.sample(batch_size,
+                                                                                              trace_length)  # Get a random batch of experiences.
+
+                                    sess.run(linear_model.linear_update,
+                                                  feed_dict={linear_model.linear_X: np.vstack(trainBatch[:, 4]),
+                                                             linear_model.linear_Y: np.vstack(trainBatch[:, 5])})
+
+
 
                 # update reward after the warm up period
                 rAll += r
@@ -221,6 +218,7 @@ with tf.Session(config=config1) as sess:
             # swap state
             s = s1
             sP = s1P
+            feature=featurep
 
         # Add the episode to the experience buffer
         for station in range(N_station):
