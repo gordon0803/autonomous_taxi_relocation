@@ -59,15 +59,6 @@ class drqn_agent():
         print("Agent network initialization complete, Agent name:",self.name)
 
     def update_target_net(self):
-        # set target network's parameters to be the same as the primary network
-        """
-        Copies the model parameters of one estimator to another.
-        Args:
-          sess: Tensorflow session instance
-          estimator1: Estimator to copy the paramters from
-          estimator2: Estimator to copy the parameters to
-        """
-
         network.updateTarget(self.targetOps, self.sess)
 
     def predict(self, s,predict_score,e,station):
@@ -93,11 +84,11 @@ class drqn_agent():
 
         return action
 
-    def predict_softmax(self, s):
-        Qdist = self.sess.run(self.mainQN.Qout, feed_dict={ \
-            self.mainQN.scalarInput: [s], \
-            self.mainQN.trainLength: 1, self.mainQN.batch_size: 1})
-        return Qdist
+    def predict_regular(self, s):
+        action = self.sess.run(self.mainQN.predict, feed_dict={self.mainQN.scalarInput: [s], self.mainQN.trainLength: 1,
+                                                            self.mainQN.batch_size: 1})
+        return action
+
 
     def get_rnn_state(self, s, state):
         state1 = self.sess.run(self.mainQN.rnn_state,
@@ -106,7 +97,7 @@ class drqn_agent():
 
         return state1
 
-    def train(self, trainBatch, trace_length, batch_size,linear_model,e,station,N_station):
+    def train(self, trainBatch, trace_length, batch_size,linear_model,e,station,N_station,predict_score):
         # use double DQN as the training step
         # Use main net to make a prediction
 
@@ -115,12 +106,7 @@ class drqn_agent():
             self.mainQN.batch_size: batch_size})
 
         #prediction based on the optimal feasible values.
-        predict_score = self.sess.run(linear_model.linear_Yh, feed_dict={linear_model.linear_X: np.vstack(trainBatch[:,6])})
-        if e>0.8:
-            threshold=1-e
-        else:
-            threshold=0.2;
-        legible = predict_score >= threshold
+        legible = predict_score >= self.get_threshold(e,0.2)
         legible_true=np.ones((batch_size*trace_length,N_station+1))
         legible_true[:,:-1]=legible #assign value
         legible_true[:,station] = True #change column value to legible solutions
@@ -134,13 +120,34 @@ class drqn_agent():
         # Metl the Q value to obtain the target Q value
 
         doubleQ = Q2[range(batch_size * trace_length), Q1]
-        targetQ = trainBatch[:, 2] + (.8 * doubleQ)  # .99 is the discount for doubleQ value
+
+        reward=np.array([r[station] for r in trainBatch[:,2]])
+        action=np.array([a[station] for a in trainBatch[:,1]])
+        targetQ = reward + (.8 * doubleQ)  # .99 is the discount for doubleQ value
+
 
         # update network parameters with the predefined training method
         self.sess.run(self.mainQN.updateModel, \
                       feed_dict={self.mainQN.scalarInput: np.vstack(trainBatch[:, 0]), self.mainQN.targetQ: targetQ, \
-                                 self.mainQN.actions: trainBatch[:, 1], self.mainQN.trainLength: trace_length, \
+                                 self.mainQN.actions: action, self.mainQN.trainLength: trace_length, \
                                  self.mainQN.batch_size: batch_size})
+
+
+    def train_prepare(self, trainBatch, trace_length, batch_size,linear_model,e,station,N_station,predict_score,Q1,Q2,use_linear):
+        if use_linear:
+            legible = predict_score >= self.get_threshold(e,0.2)
+            legible_true=np.ones((batch_size*trace_length,N_station+1))
+            legible_true[:,:-1]=legible #assign value
+            legible_true[:,station] = True #change column value to legible solutions
+            Q1 = np.argmax(Q1 * legible_true, axis=1)
+        else:
+            Q1=np.argmax(Q1,axis=1) #take the maximum operation
+
+        doubleQ = Q2[range(batch_size * trace_length), Q1]
+        reward=np.array([r[station] for r in trainBatch[:,2]])
+        action=np.array([a[station] for a in trainBatch[:,1]])
+        targetQ = reward + (.8 * doubleQ)  # .99 is the discount for doubleQ value
+        return targetQ,action
 
 
 
@@ -159,7 +166,7 @@ class drqn_agent():
 
         # Metl the Q value to obtain the target Q value
         doubleQ = Q2[range(batch_size * trace_length), Q1]
-        targetQ = trainBatch[:, 2] + (.99 * doubleQ)  # .99 is the discount for doubleQ value
+        targetQ = trainBatch[:, 2] + (.8 * doubleQ)  # .99 is the discount for doubleQ value
 
         # update network parameters with the predefined training method
         abs_error, _ = self.sess.run([self.mainQN.abs_errors, self.mainQN.updateModel],
@@ -175,3 +182,10 @@ class drqn_agent():
     # remember the episodebuffer
     def remember(self, episodeBuffer):
         self.buffer.add(episodeBuffer)
+
+    @staticmethod
+    def get_threshold(e,threshold):
+        if e>1-threshold:
+            threshold=1-e
+        return threshold
+

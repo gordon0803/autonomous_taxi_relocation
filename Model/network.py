@@ -20,7 +20,7 @@ class linear_model():
 
         self.linear_Yh=tf.matmul(self.linear_X_reshape,self.W) #linear model
         self.linear_loss=tf.reduce_mean(tf.square(self.linear_Yh-self.linear_Y))+self.regularization_penalty
-        self.linear_opt=tf.train.GradientDescentOptimizer(0.05)
+        self.linear_opt=tf.train.AdamOptimizer(learning_rate=0.001, name='linear_adam')
         self.linear_update=self.linear_opt.minimize(self.linear_loss,name='linear_train')
 
 
@@ -86,8 +86,8 @@ class Qnetwork():
         self.actions = tf.placeholder(shape=[None], dtype=tf.int32)
         self.Qout = self.Value + tf.subtract(self.Advantage, tf.reduce_mean(self.Advantage, axis=1, keepdims=True), name=myScope+'_Qout')
         self.predict = tf.argmax(self.Qout, 1,name=myScope+'_prediction')
-        self.maskA = tf.zeros([self.batch_size, 20]) #Mask first 20 records are shown to have the best results
-        self.maskB = tf.ones([self.batch_size, self.trainLength-20])
+        self.maskA = tf.zeros([self.batch_size, train_length//2]) #Mask first 20 records are shown to have the best results
+        self.maskB = tf.ones([self.batch_size, train_length//2])
         self.actions_onehot = tf.one_hot(self.actions, N_station+1, dtype=tf.float32,name=myScope+'_onehot') #action +1, with the last action being station without any vehicles
         self.mask = tf.concat([self.maskA, self.maskB], 1)
         self.mask = tf.reshape(self.mask, [-1])

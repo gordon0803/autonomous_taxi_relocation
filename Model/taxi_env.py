@@ -78,8 +78,10 @@ class taxi_simulator():
         # taxi_input can be a scalar or a vector
         # if scalar: each station has k taxis
         taxi_input = self.taxi_input
+        #create random taxi initial numbers
+        rnd_array = np.random.multinomial(taxi_input*self.N, np.ones(self.N) / self.N, size=1)[0]
         if not isinstance(taxi_input, list):
-            taxi_input = [taxi_input for i in range(self.N)]  # convert it to a list
+            taxi_input = rnd_array
 
         self.total_taxi=sum(taxi_input)
 
