@@ -40,16 +40,16 @@ class Qnetwork():
         # create 4 convolution layers first
         self.conv1 = tf.nn.relu(tf.layers.conv2d( \
             inputs=self.imageIn, filters=32, \
-            kernel_size=[5, 5], strides=[4, 4], padding='VALID', \
+            kernel_size=[5, 5], strides=[3, 3], padding='VALID', \
              name=myScope + '_net_conv1'))
         self.conv2 = tf.nn.relu(tf.layers.conv2d( \
             inputs=self.conv1, filters=64, \
-            kernel_size=[4, 4], strides=[3, 3], padding='VALID', \
+            kernel_size=[3, 3], strides=[3, 3], padding='VALID', \
              name=myScope + '_net_conv2'))
 
         self.conv3 = tf.nn.relu(tf.layers.conv2d( \
            inputs=self.conv2, filters=64, \
-           kernel_size=[3, 3], strides=[2, 2], padding='VALID', \
+           kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
             name=myScope + '_net_conv3'))
 
         # self.conv4 = tf.nn.relu(tf.layers.conv2d( \
@@ -91,8 +91,8 @@ class Qnetwork():
         self.Qout = self.Value + tf.subtract(self.Advantage, tf.reduce_mean(self.Advantage, axis=1, keepdims=True),
                                              name=myScope + '_Qout')
         self.predict = tf.argmax(self.Qout, 1, name=myScope + '_prediction')
-        self.maskA = tf.zeros([self.batch_size, 20])  # Mask first 20 records are shown to have the best results
-        self.maskB = tf.ones([self.batch_size, self.trainLength - 20])
+        self.maskA = tf.zeros([self.batch_size, train_length//2])  # Mask first 20 records are shown to have the best results
+        self.maskB = tf.ones([self.batch_size, train_length//2])
         self.actions_onehot = tf.one_hot(self.actions, N_station + 1, dtype=tf.float32,
                                          name=myScope + '_onehot')  # action +1, with the last action being station without any vehicles
         self.mask = tf.concat([self.maskA, self.maskB], 1)

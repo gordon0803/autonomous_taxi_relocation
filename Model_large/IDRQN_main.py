@@ -55,7 +55,7 @@ silent = config.TRAIN_CONFIG['silent']  # do not print training time
 prioritized = config.TRAIN_CONFIG['prioritized']
 
 
-tau = 0.3
+tau = 0.1
 
 # --------------Simulation initialization
 sys_tracker = system_tracker()
@@ -99,13 +99,34 @@ with tf.Session(config=config1) as sess:
         stand_agent.append(DRQN_agent.drqn_agent(str(station), N_station, h_size, tau, sess, batch_size, trace_length,
                                                  prioritized=prioritized, is_gpu=use_gpu))
 
+    exp_replay=network.experience_buffer() #a single buffer holds everything
     global_init = tf.global_variables_initializer()
     # writer = tf.summary.FileWriter('./graphs', sess.graph)
     # writer.close()
     sess.run(global_init)
 
+    Qp_in=[]
+    Qp_value_in=[]
+    Q1_in=[]
+    Q2_in=[]
+    Q_train=[]
+    Q_input_dict = dict()
+    Q_train_dict = dict()
+    Qp_input_dict=dict()
+    for stand in stand_agent:
+        Qp_in.append(stand.mainQN.predict)
+        Qp_value_in.append(stand.mainQN.Qout)
+        Qp_input_dict[stand.mainQN.trainLength] = 1
+        Qp_input_dict[stand.mainQN.batch_size] = 1
+        Q1_in.append(stand.mainQN.Qout)
+        Q2_in.append(stand.targetQN.Qout)
+        Q_train.append(stand.mainQN.updateModel)
+
+
+
     for i in range(num_episodes):
         episodeBuffer = [[] for station in range(N_station)]
+        global_epi_buffer=[]
         sys_tracker.new_episode()
         # Reset environment and get first new observation
         env.reset()
@@ -131,15 +152,24 @@ with tf.Session(config=config1) as sess:
 
             a = [-1] * N_station
 
-            if softmax_action == True:  # use softmax
-                for station in range(N_station):
-                    if env.taxi_in_q[station]:
-                        Qdist = stand_agent[station].predict_softmax(s)
-                        Qprob = network.compute_softmax(Qdist);
-                        a1_v = np.random.choice(Qprob[0], p=Qprob[0])
-                        a1 = np.argmax(Qprob[0] == a1_v)
-                        a[station] = a1  # action performed by DRQN
+            if config.TRAIN_CONFIG['use_linear'] == 0:  # not using action elimination
 
+                if np.random.rand(1) < e or total_steps < pre_train_steps:
+                    for station in range(N_station):
+                        if env.taxi_in_q[station]:
+                            a[station] = np.random.randint(0, N_station)  # random actions for each station
+                else:
+                    t1=time.time()
+                    for stand in stand_agent:
+                        Qp_input_dict[stand.mainQN.scalarInput] = [s]
+
+                    pd=sess.run(Qp_in,feed_dict=Qp_input_dict)
+                    at=[-1]*N_station
+                    for station in range(N_station):
+                        if env.taxi_in_q[station]:
+                            at[station]=pd[station][0]
+                            if at[station]==N_station:
+                                at[station]=station
 
             else:  # use e-greedy
                 predict_score = sess.run(linear_model.linear_Yh, feed_dict={linear_model.linear_X: [feature]})
@@ -171,65 +201,100 @@ with tf.Session(config=config1) as sess:
                     e -= stepDrop
             # episode buffer
             # we don't store the initial 200 steps of the simulation, as warm up periods
-            if j > warmup_time:
-                t1 = time.time()
-                for station in range(N_station):
-                    # we penalize the reward to motivate long term benefits
-                    # newr=r+rp[a[station]]  #system reward + shared reward
-                    newr = r
-                    # only record the buffer for the chosen agent
-                    if a[station] == -1:
-                        newr = 0
-                        a[station] = N_station
-                    episodeBuffer[station].append(np.reshape(np.array([s, a[station], newr, s1,feature,score,featurep]), [1,
-                                                                                                   7]))  # use a[nn] for action taken by that specific agent
-                    if total_steps > pre_train_steps and j > warmup_time:
-                        # start training here
-                        # We train the selected agent
-                        if total_steps % (update_freq) == 0:
-                            stand_agent[station].update_target_net()  # soft update target network
-                            # Reset the recurrent layer's hidden state
-                            if prioritized:
-                                tree_idx, trainBatch, ISWeights = stand_agent[station].buffer.sample(batch_size,
-                                                                                                trace_length)
-                                abs_error = stand_agent[station].per_train(trainBatch, trace_length, batch_size, ISWeights)
-                                stand_agent[station].buffer.batch_update(tree_idx, abs_error)
+            newr=[r]*N_station
+            for station in range(N_station):
+                if a[station] == -1:
+                    newr[station]=0
+                    a[station] = N_station
+            global_epi_buffer.append(np.reshape(np.array([s, a, newr, s1,feature,score,featurep]), [1,7]))
+            #use a single buffer
+            if total_steps > pre_train_steps and j > warmup_time:
+                trainBatch = exp_replay.sample(batch_size, trace_length)
+                #train linear multi-arm bandit first
 
-                            else:
-                                trainBatch = stand_agent[station].buffer.sample(batch_size,
-                                                                           trace_length)  # Get a random batch of experiences.
-                                # Below we perform the Double-DQN update to the target Q-values
-                                stand_agent[station].train(trainBatch, trace_length, batch_size,linear_model,e,station,N_station)
-                                #just train once
-                                if station%5==0 and config.TRAIN_CONFIG['use_linear']:
-                                    linear_buffer= stand_agent[station].buffer.sample(batch_size,
-                                                                                              trace_length)  # Get a random batch of experiences.
+                if total_steps % (update_freq) == 0:
+                    sess.run(linear_model.linear_update, feed_dict={linear_model.linear_X: np.vstack(trainBatch[:, 4]),
+                                                                    linear_model.linear_Y: np.vstack(trainBatch[:, 5])})
+                    train_predict_score = sess.run(linear_model.linear_Yh,
+                                                  feed_dict={linear_model.linear_X: np.vstack(trainBatch[:, 6])})
+                    t1=time.time()
+                    var=np.vstack(trainBatch[:, 3])
+                    for stand in stand_agent:
+                        stand.update_target_net()  # soft update target network
+                        Q_input_dict[stand.mainQN.scalarInput]=var
+                        Q_input_dict[stand.mainQN.trainLength]=trace_length
+                        Q_input_dict[stand.mainQN.batch_size]= batch_size
+                        Q_input_dict[stand.targetQN.scalarInput]= var
+                        Q_input_dict[stand.targetQN.trainLength]=trace_length
+                        Q_input_dict[stand.targetQN.batch_size]= batch_size
 
-                                    sess.run(linear_model.linear_update,
-                                                  feed_dict={linear_model.linear_X: np.vstack(trainBatch[:, 4]),
-                                                             linear_model.linear_Y: np.vstack(trainBatch[:, 5])})
+                    # Q1=sess.run(Q1_in,feed_dict=Q_input_dict)
+                    # Q2=sess.run(Q2_in,feed_dict=Q_input_dict)
+                    Qvalue=sess.run(Q1_in+Q2_in,feed_dict=Q_input_dict)
+                    Q1=Qvalue[:len(Qvalue)//2]
+                    Q2=Qvalue[len(Qvalue)//2:]
 
 
+                    var=np.vstack(trainBatch[:, 0])
+                    for station in range(N_station):
+                        tQ,t_action=stand_agent[station].train_prepare(trainBatch, trace_length, batch_size,linear_model,e,station,N_station,train_predict_score,Q1[station],Q2[station],config.TRAIN_CONFIG['use_linear'])
+                        Q_train_dict[stand_agent[station].mainQN.scalarInput]=var
+                        Q_train_dict[stand_agent[station].mainQN.targetQ]= tQ
+                        Q_train_dict[stand_agent[station].mainQN.actions]= t_action
+                        Q_train_dict[stand_agent[station].mainQN.trainLength]=trace_length
+                        Q_train_dict[stand_agent[station].mainQN.batch_size]=batch_size
 
-                # update reward after the warm up period
-                rAll += r
+                    #train now
+                    sess.run(Q_train,feed_dict=Q_train_dict)
+
+                    # print('Sequential Train time:', time.time()-t1)
+
+# ---------------------------- Sequential Training -----------------------------------------
+#                 t1=time.time()
+#                 for station in range(N_station):
+#                     if total_steps % (update_freq) == 0:
+#                         stand_agent[station].update_target_net()  # soft update target network
+#                         # Reset the recurrent layer's hidden state
+#                         if prioritized:
+#                             tree_idx, trainBatch, ISWeights = stand_agent[station].buffer.sample(batch_size,
+#                                                                                                 trace_length)
+#                             abs_error = stand_agent[station].per_train(trainBatch, trace_length, batch_size, ISWeights)
+#                             stand_agent[station].buffer.batch_update(tree_idx, abs_error)
+#
+#                         else:
+#                             stand_agent[station].train(trainBatch, trace_length, batch_size,linear_model,e,station,N_station,train_predict_score)
+#
+#                 if total_steps % (update_freq) == 0:
+#                     print('Sequential Train time:', time.time() - t1)
+#                 # update reward after the warm up period
+
                 if total_steps > pre_train_steps and total_steps % (update_freq) == 0 and silent == 0:
                     print('training time:', time.time() - t1)
+            rAll += r
             # swap state
             s = s1
             sP = s1P
             feature=featurep
-
+            ## -----------------can be removed ---------------
         # Add the episode to the experience buffer
-        for station in range(N_station):
-            bufferArray = np.array(episodeBuffer[station])
+        # for station in range(N_station):
+        #     bufferArray = np.array(episodeBuffer[station])
+        #     tempArray = []
+        #     # now we break this bufferArray into tiny steps, according to the step length
+        #     # lets allow overlapping for halp of the segment
+        #     # e.g., if trace_length=20, we store [0-19] and [10-29]....keep this
+        #     for point in range(2 * (len(bufferArray) + 1 - trace_length) // trace_length):
+        #         stand_agent[station].remember(
+        #             bufferArray[(point * (trace_length // 2)):(point * (trace_length // 2) + trace_length)])
+
+            ## -----------------can be removed ---------------
+            bufferArray = np.array(global_epi_buffer)
             tempArray = []
             # now we break this bufferArray into tiny steps, according to the step length
             # lets allow overlapping for halp of the segment
             # e.g., if trace_length=20, we store [0-19] and [10-29]....keep this
             for point in range(2 * (len(bufferArray) + 1 - trace_length) // trace_length):
-                stand_agent[station].remember(
-                    bufferArray[(point * (trace_length // 2)):(point * (trace_length // 2) + trace_length)])
+                exp_replay.add(bufferArray[(point * (trace_length // 2)):(point * (trace_length // 2) + trace_length)])
 
         jList.append(j)
         rList.append(rAll)  # reward in this episode

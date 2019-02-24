@@ -12,7 +12,7 @@ travel_time = np.loadtxt(open('nycdata/selected_time.csv','rb'),delimiter=',')
 OD_mat=np.loadtxt(open('nycdata/od_50.csv','rb'),delimiter=',')
 
 
-OD_mat=OD_mat/1800;  #every 20 seconds
+OD_mat=OD_mat/1400;  #every 20 seconds
 travel_time=travel_time*15;
 arrival_rate=OD_mat.sum(axis=1) #row sum for passenger arrival at the station
 incoming__taxi=OD_mat.sum(axis=0)

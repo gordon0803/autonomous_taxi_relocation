@@ -78,8 +78,10 @@ class taxi_simulator():
         # taxi_input can be a scalar or a vector
         # if scalar: each station has k taxis
         taxi_input = self.taxi_input
+        #create random taxi initial numbers
+        rnd_array = np.random.multinomial(taxi_input*self.N, np.ones(self.N) / self.N, size=1)[0]
         if not isinstance(taxi_input, list):
-            taxi_input = [taxi_input for i in range(self.N)]  # convert it to a list
+            taxi_input = rnd_array
 
         self.total_taxi=sum(taxi_input)
 
@@ -353,9 +355,9 @@ class taxi_simulator():
             feature+=[passenger_gap[i,i],taxi_in_q[i,i],taxi_in_relocation[:,i].sum(),taxi_in_travel[:,i].sum()]
             #update score
             if self.taxi_in_q[i]: #drivers waiting passengers
-                self.score[i]*=sigmoid(-min(len(self.passenger_qtime[i]),50))
+                self.score[i]*=sigmoid(-len(self.taxi_in_q[i]))
             else:
-                self.score[i]*=sigmoid(min(len(self.passenger_qtime[i]),50))
+                self.score[i]*=sigmoid(len(self.passenger_qtime[i]))
                 self.score[i]=min(self.score[i],1) #bound to [0,1]
 
             score.append(self.score[i])
