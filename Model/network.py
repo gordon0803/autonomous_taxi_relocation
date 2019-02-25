@@ -12,7 +12,7 @@ class linear_model():
         self.linear_X_reshape = tf.reshape(self.linear_X, shape=[-1, N_station*4])
         self.linear_Y = tf.placeholder(shape=[None, N_station], dtype=tf.float32,name='linear_params_Y')
 
-        self.l1_regularizer = tf.contrib.layers.l1_regularizer(
+        self.l1_regularizer = tf.contrib.layers.l2_regularizer(
             scale=0.01, scope=None
         )
         self.weights = tf.trainable_variables(scope='linear_params')  # all vars of your graph
@@ -20,7 +20,7 @@ class linear_model():
 
         self.linear_Yh=tf.matmul(self.linear_X_reshape,self.W) #linear model
         self.linear_loss=tf.reduce_mean(tf.square(self.linear_Yh-self.linear_Y))+self.regularization_penalty
-        self.linear_opt=tf.train.AdamOptimizer(learning_rate=0.001, name='linear_adam')
+        self.linear_opt=tf.train.AdamOptimizer(learning_rate=0.1, name='linear_adam')
         self.linear_update=self.linear_opt.minimize(self.linear_loss,name='linear_train')
 
 
@@ -112,7 +112,7 @@ class Qnetwork():
 
 
 class experience_buffer():
-    def __init__(self, buffer_size=5000):
+    def __init__(self, buffer_size=10000):
         self.buffer = []
         self.buffer_size = buffer_size
 

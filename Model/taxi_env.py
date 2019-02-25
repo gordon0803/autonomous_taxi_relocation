@@ -345,7 +345,7 @@ class taxi_simulator():
         # reward
         total_taxi_in_travel = taxi_in_travel.sum()
         total_taxi_in_relocation = taxi_in_relocation.sum()
-        reward = 2*total_taxi_in_travel-total_taxi_in_relocation
+        reward = (total_taxi_in_travel-total_taxi_in_relocation)*self.total_taxi
 
 
         #calculate linear features and scores
@@ -355,9 +355,9 @@ class taxi_simulator():
             feature+=[passenger_gap[i,i],taxi_in_q[i,i],taxi_in_relocation[:,i].sum(),taxi_in_travel[:,i].sum()]
             #update score
             if self.taxi_in_q[i]: #drivers waiting passengers
-                self.score[i]*=sigmoid(-len(self.taxi_in_q[i]))
+                self.score[i]*=sigmoid(-min(len(self.taxi_in_q[i]),20))
             else:
-                self.score[i]*=sigmoid(len(self.passenger_qtime[i]))
+                self.score[i]*=sigmoid(min(len(self.taxi_in_q[i]),20))
                 self.score[i]=min(self.score[i],1) #bound to [0,1]
 
             score.append(self.score[i])
@@ -373,4 +373,4 @@ def safe_div(x,y):
     return x / y
 
 def sigmoid(x):
-    return 0.95+0.1/(1+math.exp(-x))
+    return 0.9+0.5/(1+math.exp(-x))
