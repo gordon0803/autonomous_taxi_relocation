@@ -39,7 +39,7 @@ class Qnetwork():
         # create 4 convolution layers first
         self.conv1 = tf.nn.relu(tf.layers.conv2d( \
             inputs=self.imageIn, filters=32, \
-            kernel_size=[4, 4], strides=[3, 3], padding='VALID', \
+            kernel_size=[5, 5], strides=[3, 3], padding='VALID', \
              name=myScope + '_net_conv1'))
         self.conv2 = tf.nn.relu(tf.layers.conv2d( \
             inputs=self.conv1, filters=64, \

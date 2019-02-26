@@ -64,12 +64,12 @@ class drqn_agent_efficient():
         for i in range(self.N_station):
             myScope = 'DRQN_main_'+str(i)
             conv1 = tf.nn.relu(tf.layers.conv2d( \
-                inputs=self.imageIn, filters=64, \
-                kernel_size=[3, 3], strides=[2, 2], padding='VALID', \
+                inputs=self.imageIn, filters=32, \
+                kernel_size=[1, 1], strides=[2, 2], padding='VALID', \
                 name=myScope + '_net_conv1'))
             conv2 = tf.nn.relu(tf.layers.conv2d( \
-                 inputs=conv1, filters=64, \
-                 kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
+                 inputs=conv1, filters=32, \
+                 kernel_size=[4, 4], strides=[1, 1], padding='VALID', \
                  name=myScope + '_net_conv2'))
             convFlat = tf.reshape(slim.flatten(conv2), [self.batch_size, self.trainLength, self.h_size],
                                        name=myScope + '_convlution_flattern')
@@ -103,10 +103,10 @@ class drqn_agent_efficient():
             # Below we obtain the loss by taking the sum of squares difference between the target and prediction Q values.
             Q = tf.reduce_sum(tf.multiply(Qout, actions_onehot), axis=1, name=myScope + 'Qvalue')
             base_error=tf.abs(self.targetQ[i]-Q)
-            clipv=10;
+            clipv=100;
             huber_error=tf.where(base_error<clipv,0.5*tf.square(base_error),clipv*(base_error-0.5*clipv),name=myScope+'_HuberError')
             td_error = tf.square(self.targetQ[i] - Q, name=myScope + '_TDERROR')
-            hyst_error=tf.where(self.targetQ[i]-Q<0,0.4*huber_error,huber_error,name=myScope+'_hysterError')
+            hyst_error=tf.where(self.targetQ[i]-Q<0,0.2*huber_error,huber_error,name=myScope+'_hysterError')
             # In order to only propogate accurate gradients through the network, we will mask the first
             # half of the losses for each trace as per Lample & Chatlot 2016
             loss = tf.reduce_mean(hyst_error * self.mask, name=myScope + '_defineloss')
@@ -118,15 +118,15 @@ class drqn_agent_efficient():
         for i in range(self.N_station):
             myScope = 'DRQN_target_' + str(i)
             conv1 = tf.nn.relu(tf.layers.conv2d( \
-                inputs=self.imageIn, filters=64, \
-                kernel_size=[3, 3], strides=[2, 2], padding='VALID', \
+                inputs=self.imageIn, filters=32, \
+                kernel_size=[1, 1], strides=[2, 2], padding='VALID', \
                 name=myScope + '_net_conv1'))
             conv2 = tf.nn.relu(tf.layers.conv2d( \
-                 inputs=conv1, filters=64, \
-                 kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
+                 inputs=conv1, filters=32, \
+                 kernel_size=[4, 4], strides=[1, 1], padding='VALID', \
                  name=myScope + '_net_conv2'))
             convFlat = tf.reshape(slim.flatten(conv2), [self.batch_size, self.trainLength, self.h_size],
-                                  name=myScope + '_convlution_flattern')
+                                       name=myScope + '_convlution_flattern')
             if self.use_gpu:
                 print('Using CudnnLSTM')
                 lstm = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1, num_units=self.h_size, name=myScope + '_lstm')
