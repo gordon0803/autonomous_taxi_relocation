@@ -14,6 +14,7 @@ import numpy as np
 import network
 import DRQN_agent
 from system_tracker import system_tracker
+import bandit
 
 if use_gpu == 0:
     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
@@ -55,7 +56,7 @@ silent = config.TRAIN_CONFIG['silent']  # do not print training time
 prioritized = config.TRAIN_CONFIG['prioritized']
 
 
-tau = 0.1
+tau = 0.01
 
 # --------------Simulation initialization
 sys_tracker = system_tracker()
@@ -81,6 +82,7 @@ nn = 0
 if not os.path.exists(path):
     os.makedirs(path)
 
+linucb_agent=bandit.linucb_agnet(N_station,N_station*4)
 # # this step loads the model from the model that has been saved
 # if load_model == True:
 #     print('Loading Model...')
@@ -99,7 +101,7 @@ with tf.Session(config=config1) as sess:
     agent=DRQN_agent.drqn_agent_efficient(N_station, h_size, tau, sess, batch_size, trace_length,is_gpu=use_gpu)
     agent.drqn_build()
 
-    exp_replay=network.experience_buffer() #a single buffer holds everything
+    exp_replay=network.experience_buffer(2000) #a single buffer holds everything
     global_init = tf.global_variables_initializer()
     # writer = tf.summary.FileWriter('./graphs', sess.graph)
     # writer.close()
@@ -125,7 +127,6 @@ with tf.Session(config=config1) as sess:
 
 
     for i in range(num_episodes):
-        episodeBuffer = [[] for station in range(N_station)]
         global_epi_buffer=[]
         sys_tracker.new_episode()
         # Reset environment and get first new observation
@@ -140,11 +141,13 @@ with tf.Session(config=config1) as sess:
         j = 0
         total_serve = 0
         total_leave = 0
+
+        buffer_count=0;
         # We train one station in one single episode, and hold it unchanged for other stations, and we keep rotating.
 
 
         while j < max_epLength:
-
+            tall=time.time()
             j += 1
 
             # for all the stations, act greedily
@@ -167,10 +170,11 @@ with tf.Session(config=config1) as sess:
                                 a[station] = station
 
             else:  # use e-greedy
-                predict_score = sess.run(linear_model.linear_Yh, feed_dict={linear_model.linear_X: [feature]})
+                #predict_score = sess.run(linear_model.linear_Yh, feed_dict={linear_model.linear_X: [feature]})
+                predict_score=linucb_agent.return_upper_bound(feature)
                 for station in range(N_station):
                     if env.taxi_in_q[station]:
-                        a1 = agent.predict(s,predict_score[0],e,station)
+                        a1 = agent.predict(s,predict_score,e,station)
                         a[station] = a1  # action performed by DRQN
                         if a[station] == N_station:
                             a[station] = station
@@ -201,24 +205,43 @@ with tf.Session(config=config1) as sess:
                 if a[station] == -1:
                     newr[station]=0
                     a[station] = N_station
+
+
             global_epi_buffer.append(np.reshape(np.array([s, a, newr, s1,feature,score,featurep]), [1,7]))
+
+            ##exp replay
+            buffer_count+=1
+            if buffer_count>=trace_length:
+                bufferArray=np.array(global_epi_buffer)
+                exp_replay.add(bufferArray[:trace_length])
+                global_epi_buffer=[]
+                buffer_count=0
             #use a single buffer
             if total_steps > pre_train_steps and j > warmup_time:
-                trainBatch = exp_replay.sample(batch_size, trace_length)
-                #train linear multi-arm bandit first
+                #train linear multi-arm bandit first, we periodically update this (every 10*update_fequency steps)
+                if total_steps % (update_freq*10) == 0:
+                     linubc_train=exp_replay.sample(batch_size*10,trace_length)
+                     linucb_agent.update(linubc_train[:, 4], linubc_train[:, 1], linubc_train[:, 5])
 
+                t1 = time.time()
                 if total_steps % (update_freq) == 0:
+                    trainBatch = exp_replay.sample(batch_size, trace_length)
+                    #sess.run(linear_model.linear_update, feed_dict={linear_model.linear_X: np.vstack(trainBatch[:, 4]),
+                     #                                               linear_model.linear_Y: np.vstack(trainBatch[:, 5])})
+                    #train_predict_score = sess.run(linear_model.linear_Yh,
+                      #                            feed_dict={linear_model.linear_X: np.vstack(trainBatch[:, 6])})
 
-                    sess.run(linear_model.linear_update, feed_dict={linear_model.linear_X: np.vstack(trainBatch[:, 4]),
-                                                                    linear_model.linear_Y: np.vstack(trainBatch[:, 5])})
-                    train_predict_score = sess.run(linear_model.linear_Yh,
-                                                  feed_dict={linear_model.linear_X: np.vstack(trainBatch[:, 6])})
-                    t1=time.time()
+                    #update UCB
+                    # print('LINUCB update time:',time.time()-t1)
+                    train_predict_score=linucb_agent.return_upper_bound_batch(trainBatch[:,6])
+                    # print('LINUCB predict time:', time.time() - t1)
+
                     var=np.vstack(trainBatch[:, 3])
                     agent.update_target_net()
                     Q_input_dict[agent.scalarInput]=var
                     Q_input_dict[agent.trainLength] = trace_length
                     Q_input_dict[agent.batch_size] = batch_size
+
 
                     # Q1=sess.run(Q1_in,feed_dict=Q_input_dict)
                     # Q2=sess.run(Q2_in,feed_dict=Q_input_dict)
@@ -265,6 +288,7 @@ with tf.Session(config=config1) as sess:
             s = s1
             sP = s1P
             feature=featurep
+            # print('iteration time:',time.time()-tall)
             ## -----------------can be removed ---------------
         # Add the episode to the experience buffer
         # for station in range(N_station):
@@ -277,14 +301,6 @@ with tf.Session(config=config1) as sess:
         #         stand_agent[station].remember(
         #             bufferArray[(point * (trace_length // 2)):(point * (trace_length // 2) + trace_length)])
 
-            ## -----------------can be removed ---------------
-            bufferArray = np.array(global_epi_buffer)
-            tempArray = []
-            # now we break this bufferArray into tiny steps, according to the step length
-            # lets allow overlapping for halp of the segment
-            # e.g., if trace_length=20, we store [0-19] and [10-29]....keep this
-            for point in range(2 * (len(bufferArray) + 1 - trace_length) // trace_length):
-                exp_replay.add(bufferArray[(point * (trace_length // 2)):(point * (trace_length // 2) + trace_length)])
 
         jList.append(j)
         rList.append(rAll)  # reward in this episode

@@ -67,11 +67,11 @@ class drqn_agent_efficient():
                 inputs=self.imageIn, filters=64, \
                 kernel_size=[3, 3], strides=[2, 2], padding='VALID', \
                 name=myScope + '_net_conv1'))
-            # conv2 = tf.nn.relu(tf.layers.conv2d( \
-            #     inputs=conv1, filters=64, \
-            #     kernel_size=[2, 2], strides=[1, 1], padding='VALID', \
-            #     name=myScope + '_net_conv2'))
-            convFlat = tf.reshape(slim.flatten(conv1), [self.batch_size, self.trainLength, self.h_size],
+            conv2 = tf.nn.relu(tf.layers.conv2d( \
+                 inputs=conv1, filters=64, \
+                 kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
+                 name=myScope + '_net_conv2'))
+            convFlat = tf.reshape(slim.flatten(conv2), [self.batch_size, self.trainLength, self.h_size],
                                        name=myScope + '_convlution_flattern')
             if self.use_gpu:
                 print('Using CudnnLSTM')
@@ -102,10 +102,14 @@ class drqn_agent_efficient():
             # Then combine them together to get our final Q-values.
             # Below we obtain the loss by taking the sum of squares difference between the target and prediction Q values.
             Q = tf.reduce_sum(tf.multiply(Qout, actions_onehot), axis=1, name=myScope + 'Qvalue')
+            base_error=tf.abs(self.targetQ[i]-Q)
+            clipv=10;
+            huber_error=tf.where(base_error<clipv,0.5*tf.square(base_error),clipv*(base_error-0.5*clipv),name=myScope+'_HuberError')
             td_error = tf.square(self.targetQ[i] - Q, name=myScope + '_TDERROR')
+            hyst_error=tf.where(self.targetQ[i]-Q<0,0.4*huber_error,huber_error,name=myScope+'_hysterError')
             # In order to only propogate accurate gradients through the network, we will mask the first
             # half of the losses for each trace as per Lample & Chatlot 2016
-            loss = tf.reduce_mean(td_error * self.mask, name=myScope + '_defineloss')
+            loss = tf.reduce_mean(hyst_error * self.mask, name=myScope + '_defineloss')
             updateModel = self.trainer.minimize(loss, name=myScope + '_training')
             self.updateModel.append(updateModel)
 
@@ -117,11 +121,11 @@ class drqn_agent_efficient():
                 inputs=self.imageIn, filters=64, \
                 kernel_size=[3, 3], strides=[2, 2], padding='VALID', \
                 name=myScope + '_net_conv1'))
-            # conv2 = tf.nn.relu(tf.layers.conv2d( \
-            #     inputs=conv1, filters=64, \
-            #     kernel_size=[2, 2], strides=[1, 1], padding='VALID', \
-            #     name=myScope + '_net_conv2'))
-            convFlat = tf.reshape(slim.flatten(conv1), [self.batch_size, self.trainLength, self.h_size],
+            conv2 = tf.nn.relu(tf.layers.conv2d( \
+                 inputs=conv1, filters=64, \
+                 kernel_size=[2, 2], strides=[2, 2], padding='VALID', \
+                 name=myScope + '_net_conv2'))
+            convFlat = tf.reshape(slim.flatten(conv2), [self.batch_size, self.trainLength, self.h_size],
                                   name=myScope + '_convlution_flattern')
             if self.use_gpu:
                 print('Using CudnnLSTM')
@@ -167,10 +171,7 @@ class drqn_agent_efficient():
 
     def predict(self, s,predict_score,e,station):
         # make the prediction
-        if e>0.8:
-            threshold=1-e
-        else:
-            threshold=0.2;
+        threshold=0.4
         legible = predict_score >= threshold
 
         if np.random.rand(1)<e: #epsilon greedy
@@ -202,7 +203,7 @@ class drqn_agent_efficient():
             self.batch_size: batch_size})
 
         #prediction based on the optimal feasible values.
-        legible = predict_score >= self.get_threshold(e,0.2)
+        legible = predict_score >= 0.4
         legible_true=np.ones((batch_size*trace_length,N_station+1))
         legible_true[:,:-1]=legible #assign value
         legible_true[:,station] = True #change column value to legible solutions
@@ -230,7 +231,7 @@ class drqn_agent_efficient():
 
     def train_prepare(self, trainBatch, trace_length, batch_size,linear_model,e,station,N_station,predict_score,Q1,Q2,use_linear):
         if use_linear:
-            legible = predict_score >= self.get_threshold(e,0.2)
+            legible = predict_score >= 0.4
             legible_true=np.ones((batch_size*trace_length,N_station+1))
             legible_true[:,:-1]=legible #assign value
             legible_true[:,station] = True #change column value to legible solutions
@@ -351,7 +352,7 @@ class drqn_agent():
             self.mainQN.batch_size: batch_size})
 
         #prediction based on the optimal feasible values.
-        legible = predict_score >= self.get_threshold(e,0.2)
+        legible = predict_score >= 0.4
         legible_true=np.ones((batch_size*trace_length,N_station+1))
         legible_true[:,:-1]=legible #assign value
         legible_true[:,station] = True #change column value to legible solutions
@@ -380,7 +381,7 @@ class drqn_agent():
 
     def train_prepare(self, trainBatch, trace_length, batch_size,linear_model,e,station,N_station,predict_score,Q1,Q2,use_linear):
         if use_linear:
-            legible = predict_score >= self.get_threshold(e,0.2)
+            legible = predict_score >= 0.4
             legible_true=np.ones((batch_size*trace_length,N_station+1))
             legible_true[:,:-1]=legible #assign value
             legible_true[:,station] = True #change column value to legible solutions
