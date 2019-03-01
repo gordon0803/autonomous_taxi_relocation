@@ -80,7 +80,7 @@ for i in range(num_episodes):
     # Reset timestep of system tracker
     sys_tracker.new_episode()
     # return the current state of the system
-    sP, tempr,temprp = env.get_state()
+    sP, tempr,temprp,ff= env.get_state()
     # process the state into a list
     s = network.processState(sP, N_station)
 
@@ -119,7 +119,7 @@ for i in range(num_episodes):
        total_leave+=lfp
 
        # get state and reward
-       s1P, r,rp = env.get_state()
+       s1P, r,rp,ff= env.get_state()
 
        s1 = network.processState(s1P, N_station)
 
