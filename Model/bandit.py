@@ -10,6 +10,7 @@ class linucb_agnet():
         self.Aa={} #collection of A for each arm
         self.ba={} #collection of vectors to compute disjoint part d*1
         self.AaI={} #inverse of A
+        self.Da={}
         self.theta={}
 
         #initialize parameters
@@ -17,28 +18,27 @@ class linucb_agnet():
             self.Aa[i]=np.identity(self.d)
             self.ba[i]=np.zeros(self.d)
             self.AaI[i]=np.identity(self.d)
+            self.Da[i]=np.zeros((self.d,self.d))
             self.theta[i]=np.zeros(self.d)
 
     def update(self,features,actions,rewards):
         #update all observed arms
         #reset parameters
-
+        gamma=0.6; #decay parameter
         for i in range(self.n_action):
-            self.Aa[i]=0.1*np.identity(self.d)
-            self.ba[i]=np.zeros(self.d)
-
-
+            self.Da[i]=gamma*self.Da[i]
+            self.ba[i]=gamma*self.ba[i]
         for i in range(len(features)):
             f=np.array(features[i])
             for j in range(self.n_action):
                 action=actions[i][j]
                 if action<self.n_action:
-                    self.Aa[action]+=np.outer(f,f)
+                    self.Da[action]+=np.outer(f,f)
                     self.ba[action]+= rewards[i][action]*f
 
         #inverse doesn't have to be calculated for each feature
         for action in range(self.n_action):
-            self.AaI[action]=np.linalg.inv(self.Aa[action]) #inverse
+            self.AaI[action]=np.linalg.inv(np.identity(self.d)+self.Da[action]) #inverse
             self.theta[action]=np.dot(self.AaI[action],self.ba[action])
 
         #done update

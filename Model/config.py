@@ -3,7 +3,7 @@ import demand_gen
 import pickle
 
 TRAIN_CONFIG = {
-    'batch_size':64,
+    'batch_size':32,
     'trace_length': 10,
     'update_freq': 50,
     'y': .99,
@@ -16,7 +16,7 @@ TRAIN_CONFIG = {
     'load_model':False,
     'warmup_time':-1,
     'model_path':'./drqn',
-    'h_size':128, #The size of the final convolutional layer before splitting it into Advantage and Value streams.
+    'h_size':576, #The size of the final convolutional layer before splitting it into Advantage and Value streams.
     'max_epLength':1500, #The max allowed length of our episode.
     'pre_train_steps':20000, #How many steps of random actions before traning begins
     'softmax_action':False, #use softmax or not

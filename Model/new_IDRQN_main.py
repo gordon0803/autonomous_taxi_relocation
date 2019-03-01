@@ -15,7 +15,7 @@ import network
 import DRQN_agent
 from system_tracker import system_tracker
 import bandit
-
+np.set_printoptions(precision=2)
 if use_gpu == 0:
     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
@@ -102,6 +102,7 @@ with tf.Session(config=config1) as sess:
     agent.drqn_build()
 
     exp_replay=network.experience_buffer(2000) #a single buffer holds everything
+    bandit_buffer=network.bandit_buffer(5000)
     global_init = tf.global_variables_initializer()
     # writer = tf.summary.FileWriter('./graphs', sess.graph)
     # writer.close()
@@ -128,6 +129,7 @@ with tf.Session(config=config1) as sess:
 
     for i in range(num_episodes):
         global_epi_buffer=[]
+        global_bandit_buffer=[]
         sys_tracker.new_episode()
         # Reset environment and get first new observation
         env.reset()
@@ -179,6 +181,9 @@ with tf.Session(config=config1) as sess:
                         if a[station] == N_station:
                             a[station] = station
 
+                # if total_steps % (1000) == 0 and i > 4:
+                #     print('Available actions to choose from:',sum(predict_score>0.4),sum(predict_score>0.3),sum(predict_score>0.2),sum(predict_score>0.1))
+                #     print(predict_score)
             if config.TRAIN_CONFIG['use_tracker']:
                 sys_tracker.record(s, a)
 
@@ -208,6 +213,7 @@ with tf.Session(config=config1) as sess:
 
 
             global_epi_buffer.append(np.reshape(np.array([s, a, newr, s1,feature,score,featurep]), [1,7]))
+            global_bandit_buffer.append(np.reshape(np.array([s, a, newr, s1,feature,score,featurep]), [1,7]))
 
             ##exp replay
             buffer_count+=1
@@ -216,13 +222,14 @@ with tf.Session(config=config1) as sess:
                 exp_replay.add(bufferArray[:trace_length])
                 global_epi_buffer=[]
                 buffer_count=0
+
+            if total_steps % (1000) == 0 and i>4:
+                linubc_train = bandit_buffer.sample(batch_size * 50)
+                linucb_agent.update(linubc_train[:, 4], linubc_train[:, 1], linubc_train[:, 5])
+
             #use a single buffer
             if total_steps > pre_train_steps and j > warmup_time:
                 #train linear multi-arm bandit first, we periodically update this (every 10*update_fequency steps)
-                if total_steps % (update_freq*10) == 0:
-                     linubc_train=exp_replay.sample(batch_size*10,trace_length)
-                     linucb_agent.update(linubc_train[:, 4], linubc_train[:, 1], linubc_train[:, 5])
-
                 t1 = time.time()
                 if total_steps % (update_freq) == 0:
                     trainBatch = exp_replay.sample(batch_size, trace_length)
@@ -288,6 +295,14 @@ with tf.Session(config=config1) as sess:
             s = s1
             sP = s1P
             feature=featurep
+
+            #preocess bandit buffer
+        for epi in range(len(global_bandit_buffer)-trace_length):
+               # print(global_bandit_buffer[i])
+            score=np.mean([global_bandit_buffer[epi+k][0][5] for k in range(trace_length)],axis=0)
+            record=global_bandit_buffer[epi]
+            record[0][5]=score; #replay the score
+            bandit_buffer.add(record)
             # print('iteration time:',time.time()-tall)
             ## -----------------can be removed ---------------
         # Add the episode to the experience buffer
