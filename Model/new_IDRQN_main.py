@@ -40,6 +40,7 @@ taxi_input = simulation_input['taxi_input']
 batch_size = config.TRAIN_CONFIG['batch_size']
 trace_length = config.TRAIN_CONFIG['trace_length']  # How long each experience trace will be when training
 update_freq = config.TRAIN_CONFIG['update_freq']  # How often to perform a training step.
+lstm_units=config.TRAIN_CONFIG['lstm_unit']
 y = config.TRAIN_CONFIG['y']  # Discount factor on the target Q-values
 startE = config.TRAIN_CONFIG['startE']  # Starting chance of random action
 endE = config.TRAIN_CONFIG['endE']  # Final chance of random action
@@ -98,10 +99,10 @@ with tf.Session(config=config1) as sess:
     # targetOps=[]
     linear_model=network.linear_model(N_station)
 
-    agent=DRQN_agent.drqn_agent_efficient(N_station, h_size, tau, sess, batch_size, trace_length,is_gpu=use_gpu)
+    agent=DRQN_agent.drqn_agent_efficient(N_station, h_size, lstm_units,tau, sess, batch_size, trace_length,is_gpu=use_gpu)
     agent.drqn_build()
 
-    exp_replay=network.experience_buffer(2000) #a single buffer holds everything
+    exp_replay=network.experience_buffer(5000) #a single buffer holds everything
     bandit_buffer=network.bandit_buffer(5000)
     global_init = tf.global_variables_initializer()
     # writer = tf.summary.FileWriter('./graphs', sess.graph)

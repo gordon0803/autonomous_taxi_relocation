@@ -15,9 +15,10 @@ import tensorflow.contrib.slim as slim
 #lets define a memory efficient drqn_agent()
 
 class drqn_agent_efficient():
-    def __init__(self,N_station,h_size,tau,sess,batch_size,train_length,is_gpu=0,ckpt_path=None):
+    def __init__(self,N_station,h_size,lstm_units,tau,sess,batch_size,train_length,is_gpu=0,ckpt_path=None):
         self.N_station=N_station;
         self.h_size=h_size;
+        self.lstm_units=lstm_units;
         self.tau=tau;
         self.sess=sess;
         self.train_length=train_length;
@@ -64,30 +65,38 @@ class drqn_agent_efficient():
         for i in range(self.N_station):
             myScope = 'DRQN_main_'+str(i)
             conv1 = tf.nn.relu(tf.layers.conv2d( \
-                inputs=input_conv, filters=10, \
-                kernel_size=[1, 1], strides=[1, 1], padding='VALID', \
+                inputs=input_conv, filters=16, \
+                kernel_size=[4, 4], strides=[1, 1], padding='VALID', \
                 name=myScope + '_net_conv1'))
             conv2 = tf.nn.relu(tf.layers.conv2d( \
                  inputs=conv1, filters=16, \
-                 kernel_size=[4, 4], strides=[2, 2], padding='VALID', \
+                 kernel_size=[4, 4], strides=[1, 1], padding='VALID', \
                  name=myScope + '_net_conv2'))
-            convFlat = tf.reshape(slim.flatten(conv2), [self.batch_size, self.trainLength, self.h_size],
+            conv3 = tf.nn.relu(tf.layers.conv2d( \
+                 inputs=conv2, filters=16, \
+                 kernel_size=[3, 3], strides=[1, 1], padding='VALID', \
+                 name=myScope + '_net_conv3'))
+            conv4 = tf.nn.relu(tf.layers.conv2d( \
+                 inputs=conv3, filters=16, \
+                 kernel_size=[3, 3], strides=[1, 1], padding='VALID', \
+                 name=myScope + '_net_conv4'))
+            convFlat = tf.reshape(slim.flatten(conv4), [self.batch_size, self.trainLength, self.h_size],
                                        name=myScope + '_convlution_flattern')
             if self.use_gpu:
                 print('Using CudnnLSTM')
-                lstm = tf.contrib.cudnn_rnn.CudnnGRU(num_layers=1, num_units=self.h_size, name=myScope + '_lstm')
+                lstm = tf.contrib.cudnn_rnn.CudnnGRU(num_layers=1, num_units=self.lstm_units, name=myScope + '_lstm')
                 rnn, rnn_state = lstm(inputs=convFlat)
             else:
                 print('Using LSTMfused')
-                lstm = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.h_size, name=myScope + '_lstm')
+                lstm = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.lstm_units, name=myScope + '_lstm')
                 rnn, rnn_state = lstm(inputs=convFlat, dtype=tf.float32)
 
-            rnn = tf.reshape(rnn, shape=[-1, self.h_size], name=myScope + '_reshapeRNN_out')
+            rnn = tf.reshape(rnn, shape=[-1, self.lstm_units], name=myScope + '_reshapeRNN_out')
             # The output from the recurrent player is then split into separate Value and Advantage streams
             streamA, streamV = tf.split(rnn, 2, 1, name=myScope + '_split_streamAV')
-            AW = tf.Variable(tf.random_normal([self.h_size // 2, self.N_station + 1]), name=myScope + 'AW')  # action +1, with the last action being station without any vehicles
+            AW = tf.Variable(tf.random_normal([self.lstm_units // 2, self.N_station + 1]), name=myScope + 'AW')  # action +1, with the last action being station without any vehicles
 
-            VW = tf.Variable(tf.random_normal([self.h_size //2, 1]), name=myScope + 'VW')
+            VW = tf.Variable(tf.random_normal([self.lstm_units //2, 1]), name=myScope + 'VW')
 
             Advantage = tf.matmul(streamA, AW, name=myScope + '_matmulAdvantage')
             Value = tf.matmul(streamV, VW, name=myScope + '_matmulValue')
@@ -119,31 +128,39 @@ class drqn_agent_efficient():
         for i in range(self.N_station):
             myScope = 'DRQN_target_' + str(i)
             conv1 = tf.nn.relu(tf.layers.conv2d( \
-                inputs=input_conv, filters=10, \
-                kernel_size=[1, 1], strides=[1, 1], padding='VALID', \
+                inputs=input_conv, filters=16, \
+                kernel_size=[4, 4], strides=[1, 1], padding='VALID', \
                 name=myScope + '_net_conv1'))
             conv2 = tf.nn.relu(tf.layers.conv2d( \
                  inputs=conv1, filters=16, \
-                 kernel_size=[4, 4], strides=[2, 2], padding='VALID', \
+                 kernel_size=[4, 4], strides=[1, 1], padding='VALID', \
                  name=myScope + '_net_conv2'))
-            convFlat = tf.reshape(slim.flatten(conv2), [self.batch_size, self.trainLength, self.h_size],
+            conv3 = tf.nn.relu(tf.layers.conv2d( \
+                 inputs=conv2, filters=16, \
+                 kernel_size=[3, 3], strides=[1, 1], padding='VALID', \
+                 name=myScope + '_net_conv3'))
+            conv4 = tf.nn.relu(tf.layers.conv2d( \
+                 inputs=conv3, filters=16, \
+                 kernel_size=[3, 3], strides=[1, 1], padding='VALID', \
+                 name=myScope + '_net_conv4'))
+            convFlat = tf.reshape(slim.flatten(conv4), [self.batch_size, self.trainLength, self.h_size],
                                        name=myScope + '_convlution_flattern')
             if self.use_gpu:
                 print('Using CudnnLSTM')
-                lstm = tf.contrib.cudnn_rnn.CudnnGRU(num_layers=1, num_units=self.h_size, name=myScope + '_lstm')
+                lstm = tf.contrib.cudnn_rnn.CudnnGRU(num_layers=1, num_units=self.lstm_units, name=myScope + '_lstm')
                 rnn, rnn_state = lstm(inputs=convFlat)
             else:
                 print('Using LSTMfused')
-                lstm = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.h_size, name=myScope + '_lstm')
+                lstm = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.lstm_units, name=myScope + '_lstm')
                 rnn, rnn_state = lstm(inputs=convFlat, dtype=tf.float32)
 
-            rnn = tf.reshape(rnn, shape=[-1, self.h_size], name=myScope + '_reshapeRNN_out')
+            rnn = tf.reshape(rnn, shape=[-1, self.lstm_units], name=myScope + '_reshapeRNN_out')
             # The output from the recurrent player is then split into separate Value and Advantage streams
             streamA, streamV = tf.split(rnn, 2, 1, name=myScope + '_split_streamAV')
-            AW = tf.Variable(tf.random_normal([self.h_size // 2, self.N_station + 1]),
+            AW = tf.Variable(tf.random_normal([self.lstm_units // 2, self.N_station + 1]),
                              name=myScope + 'AW')  # action +1, with the last action being station without any vehicles
 
-            VW = tf.Variable(tf.random_normal([self.h_size // 2, 1]), name=myScope + 'VW')
+            VW = tf.Variable(tf.random_normal([self.lstm_units // 2, 1]), name=myScope + 'VW')
 
             Advantage = tf.matmul(streamA, AW, name=myScope + '_matmulAdvantage')
             Value = tf.matmul(streamV, VW, name=myScope + '_matmulValue')
