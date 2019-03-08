@@ -24,7 +24,7 @@ class linucb_agnet():
     def update(self,features,actions,rewards):
         #update all observed arms
         #reset parameters
-        gamma=0.6; #decay parameter
+        gamma=0.95; #decay parameter
         for i in range(self.n_action):
             self.Da[i]=gamma*self.Da[i]
             self.ba[i]=gamma*self.ba[i]

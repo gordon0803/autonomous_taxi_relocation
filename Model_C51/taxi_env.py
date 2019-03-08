@@ -341,11 +341,11 @@ class taxi_simulator():
         state[:, :, 2] = taxi_in_relocation;
         state[:, :, 3] = taxi_in_charge;
         state[:, :, 4] = taxi_in_q;
-        # state[:, :, 5] = previous_action;
+        state[:, :, 5] = previous_action;
         # reward
         total_taxi_in_travel = taxi_in_travel.sum()
         total_taxi_in_relocation = taxi_in_relocation.sum()
-        reward = (total_taxi_in_travel-total_taxi_in_relocation)*self.total_taxi
+        reward = (total_taxi_in_travel-total_taxi_in_relocation)
 
 
         #calculate linear features and scores
@@ -367,7 +367,7 @@ class taxi_simulator():
 
 
 
-        return state, reward, feature,score
+        return state, reward, np.array(feature),np.array(score)
 
 
 def safe_div(x,y):
