@@ -1,7 +1,6 @@
-#Zengxiang Lei 2019-02-09
+#Zengxiang Lei 2019-03-12
 
-#Main file for greedy relocation
-
+#Greedy relocation with multi-arm bandit model
 
 import os
 from network import *

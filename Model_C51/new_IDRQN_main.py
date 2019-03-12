@@ -63,7 +63,7 @@ tau = 0.01
 
 # --------------Simulation initialization
 sys_tracker = system_tracker()
-sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station)
+sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station, num_episodes, max_epLength)
 env = te.taxi_simulator(arrival_rate, OD_mat, distance, travel_time, taxi_input)
 env.reset()
 print('System Successfully Initialized!')
@@ -133,9 +133,9 @@ with tf.Session(config=config1) as sess:
     for i in range(num_episodes):
         global_epi_buffer=[]
         global_bandit_buffer=[]
-        sys_tracker.new_episode()
         # Reset environment and get first new observation
         env.reset()
+        sys_tracker.new_episode()
         # return the current state of the system
         sP, tempr, featurep,score = env.get_state()
         # process the state into a list
@@ -371,3 +371,4 @@ with tf.Session(config=config1) as sess:
 # saver.save(sess,path+'/model-'+str(i)+'.cptk')
 reward_out.close()
 sys_tracker.save('IDRQN')
+sys_tracker.playback(-1)
