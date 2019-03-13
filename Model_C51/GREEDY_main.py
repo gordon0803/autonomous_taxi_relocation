@@ -33,6 +33,8 @@ arrival_rate=simulation_input['arrival_rate']
 taxi_input=simulation_input['taxi_input']
 print(arrival_rate)
 
+sys_tracker = system_tracker()
+sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station)
 env=te.taxi_simulator(arrival_rate,OD_mat,distance,travel_time,taxi_input)
 env.reset()
 print('System Successfully Initialized!')
@@ -44,10 +46,6 @@ max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength*50 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
 softmax_action=False
-
-# Initialize the system tracker
-sys_tracker = system_tracker()
-sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station, num_episodes, max_epLength)
 
 #------------------Train the network-----------------------
 
@@ -144,4 +142,3 @@ for i in range(num_episodes):
 reward_out.close()
 
 sys_tracker.save('greedy')
-sys_tracker.playback(-1)

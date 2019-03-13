@@ -1,7 +1,9 @@
 # Xinwu Qian 2019-02-06
 
 # This implements independent q learning approach
-use_gpu = 1
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+use_gpu = 0
 import os
 import config
 import taxi_env as te
@@ -59,11 +61,13 @@ silent = config.TRAIN_CONFIG['silent']  # do not print training time
 prioritized = config.TRAIN_CONFIG['prioritized']
 
 
-tau = 0.01
+
+tau = 0.0005
+
 
 # --------------Simulation initialization
 sys_tracker = system_tracker()
-sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station, num_episodes, max_epLength)
+sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station)
 env = te.taxi_simulator(arrival_rate, OD_mat, distance, travel_time, taxi_input)
 env.reset()
 print('System Successfully Initialized!')
@@ -133,11 +137,11 @@ with tf.Session(config=config1) as sess:
     for i in range(num_episodes):
         global_epi_buffer=[]
         global_bandit_buffer=[]
+        sys_tracker.new_episode()
         # Reset environment and get first new observation
         env.reset()
-        sys_tracker.new_episode()
         # return the current state of the system
-        sP, tempr, featurep,score = env.get_state()
+        sP, tempr, featurep,score,tr2 = env.get_state()
         # process the state into a list
         # replace the state action with future states
         feature=featurep
@@ -149,6 +153,7 @@ with tf.Session(config=config1) as sess:
         s = network.processState(sP, N_station)
 
         rAll = 0
+        rAll_unshape=0
         j = 0
         total_serve = 0
         total_leave = 0
@@ -156,7 +161,7 @@ with tf.Session(config=config1) as sess:
         buffer_count=0;
         # We train one station in one single episode, and hold it unchanged for other stations, and we keep rotating.
 
-
+        tinit=time.time()
         while j < max_epLength:
             tall=time.time()
             j += 1
@@ -183,13 +188,13 @@ with tf.Session(config=config1) as sess:
             else:  # use e-greedy
                 #predict_score = sess.run(linear_model.linear_Yh, feed_dict={linear_model.linear_X: [feature]})
                 predict_score=linucb_agent.return_upper_bound(feature)
+                predict_score=(predict_score*exp_dist)/distance
                 for station in range(N_station):
                     if env.taxi_in_q[station]:
-                        a1 = agent.predict(s,predict_score,e,station,distance[station,:],exp_dist,e_threshold)
+                        a1 = agent.predict(s,predict_score[station,:],e,station,e_threshold)
                         a[station] = a1  # action performed by DRQN
                         if a[station] == N_station:
                             a[station] = station
-
                 # if total_steps % (1000) == 0 and i > 4:
                 #     print('Available actions to choose from:',sum(predict_score>0.4),sum(predict_score>0.3),sum(predict_score>0.2),sum(predict_score>0.1))
                 #     print(predict_score)
@@ -203,7 +208,7 @@ with tf.Session(config=config1) as sess:
 
             # get state and reward
 
-            s1P, r, featurep,score = env.get_state()
+            s1P, r, featurep,score,r2 = env.get_state()
             predict_score = linucb_agent.return_upper_bound(featurep)
             predict_score[predict_score<0]=0;
             predict_score=predict_score/(sum(predict_score))
@@ -326,6 +331,7 @@ with tf.Session(config=config1) as sess:
                 # if total_steps > pre_train_steps and total_steps % (update_freq) == 0 and silent == 0:
                 #     print('training time:', time.time() - t1)
             rAll += r
+            rAll_unshape+=r2
             # swap state
             s = s1
             sP = s1P
@@ -354,7 +360,7 @@ with tf.Session(config=config1) as sess:
 
         jList.append(j)
         rList.append(rAll)  # reward in this episode
-        print('Episode:', i, ', totalreward:', rAll, ', total serve:', total_serve, ', total leave:', total_leave,
+        print('Episode:', i, ', totalreward:', rAll, ', Old reward:', rAll_unshape,', total serve:', total_serve, ', total leave:', total_leave, ', total_cpu_time:',time.time()-tinit,
               ', terminal_taxi_distribution:', [len(v) for v in env.taxi_in_q], ', terminal_passenger:',
               [len(v) for v in env.passenger_qtime], e)
         reward_out.write(str(i) + ',' + str(rAll) + '\n')
@@ -371,4 +377,3 @@ with tf.Session(config=config1) as sess:
 # saver.save(sess,path+'/model-'+str(i)+'.cptk')
 reward_out.close()
 sys_tracker.save('IDRQN')
-sys_tracker.playback(-1)

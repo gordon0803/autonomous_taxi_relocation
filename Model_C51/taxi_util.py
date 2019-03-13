@@ -7,6 +7,10 @@ from collections import deque
 
 import networkx as nx
 import numpy as np
+import numba as nb
+
+
+
 
 
 def waiting_time_update(waiting_time,expect_waiting_time):
@@ -57,24 +61,20 @@ def RGraph(dist,arrive,depart):
     G1=nx.DiGraph()
     source=N;
     sink=N+1;
-    neg_dummy=N+2; #dummy node
     #construct G1 from G, source, and sink: sink connects to all nodes in neg, source connects to all nodes in pos
     for i in range(N):
         for j in range(N):
             if i in pos and j in neg:
                 G1.add_edge(i,j,weight=dist[i,j])
+                print(dist[i,j])
                 # G1.add_edge(j,i,weight=dist[j,i],capacity=1e10)
-
-
     #link source to pos:
     for i in range(N):
         if i in pos:
             G1.add_edge(source,i,weight=0,capacity=abs(gap[i]))
-            G1.add_edge(i,neg_dummy,weight=1e3,capacity=1e3)
         elif i in neg:
             G1.add_edge(i,sink,weight=0,capacity=abs(gap[i]))
 
-    G1.add_edge(neg_dummy, sink, weight=0, capacity=1e20)
     mincostflow=nx.max_flow_min_cost(G1,source,sink)
     # mincost=nx.cost_of_flow(G1,mincostflow)
 

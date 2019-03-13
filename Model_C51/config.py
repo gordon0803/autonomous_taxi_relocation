@@ -3,14 +3,14 @@ import demand_gen
 import pickle
 
 TRAIN_CONFIG = {
-    'batch_size':32,
-    'trace_length': 20,
-    'update_freq': 50,
+    'batch_size':16,
+    'trace_length': 10,
+    'update_freq': 30,
     'lstm_unit':128,
     'y': .99,
-    'elimination_threshold':0.7,
+    'elimination_threshold':1, #use 1 for 10 station case, -100 for no elimination
     'startE':1,
-    'endE':0.01,
+    'endE':0.02,
     'anneling_steps':200*1500,
     'num_episodes':500,
     'buffer_size':5000,
@@ -24,7 +24,7 @@ TRAIN_CONFIG = {
     'softmax_action':False, #use softmax or not
     'silent': 1, #0 for print, 1 for no print
     'use_linear':1,
-    'use_tracker':1
+    'use_tracker':0
 }
 
 
