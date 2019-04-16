@@ -1,9 +1,8 @@
 # Xinwu Qian 2019-02-06
-
-# This implements independent q learning approach
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
-use_gpu = 0
+# This implements independent q learning approach
+use_gpu = 1
 import os
 import config
 import taxi_env as te
@@ -61,13 +60,11 @@ silent = config.TRAIN_CONFIG['silent']  # do not print training time
 prioritized = config.TRAIN_CONFIG['prioritized']
 
 
-
-tau = 0.0005
-
+tau = 0.01
 
 # --------------Simulation initialization
 sys_tracker = system_tracker()
-sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station, num_episodes, max_epLength)
+sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station)
 env = te.taxi_simulator(arrival_rate, OD_mat, distance, travel_time, taxi_input)
 env.reset()
 print('System Successfully Initialized!')
@@ -103,12 +100,11 @@ with tf.Session(config=config1) as sess:
     # one DRQN per station is needed, different network requires a different scope (name)
     stand_agent = []
     # targetOps=[]
-    linear_model=network.linear_model(N_station)
 
     agent=DRQN_agent.drqn_agent_efficient(N_station, h_size, lstm_units,tau, sess, batch_size, trace_length,is_gpu=use_gpu)
     agent.drqn_build()
 
-    exp_replay=network.experience_buffer(3000) #a single buffer holds everything
+    exp_replay=network.experience_buffer(10000) #a single buffer holds everything
     bandit_buffer=network.bandit_buffer(5000)
     global_init = tf.global_variables_initializer()
     # writer = tf.summary.FileWriter('./graphs', sess.graph)
@@ -145,11 +141,6 @@ with tf.Session(config=config1) as sess:
         # process the state into a list
         # replace the state action with future states
         feature=featurep
-        predict_score = linucb_agent.return_upper_bound(featurep)
-        predict_score[predict_score < 0] = 0;
-        predict_score = predict_score / (sum(predict_score))
-        p_mat = np.diag(predict_score)
-        sP[:,:,5]=p_mat
         s = network.processState(sP, N_station)
 
         rAll = 0
@@ -163,6 +154,7 @@ with tf.Session(config=config1) as sess:
 
         tinit=time.time()
         while j < max_epLength:
+            #agent.update_conf(1.96,anneling_steps)
             tall=time.time()
             j += 1
 
@@ -189,12 +181,14 @@ with tf.Session(config=config1) as sess:
                 #predict_score = sess.run(linear_model.linear_Yh, feed_dict={linear_model.linear_X: [feature]})
                 predict_score=linucb_agent.return_upper_bound(feature)
                 predict_score=(predict_score*exp_dist)/distance
+                rand_num=np.random.rand(1)
                 for station in range(N_station):
                     if env.taxi_in_q[station]:
-                        a1 = agent.predict(s,predict_score[station,:],e,station,e_threshold)
+                        a1 = agent.predict(s,predict_score[station,:],e,station,e_threshold,rand_num)
                         a[station] = a1  # action performed by DRQN
                         if a[station] == N_station:
                             a[station] = station
+
                 # if total_steps % (1000) == 0 and i > 4:
                 #     print('Available actions to choose from:',sum(predict_score>0.4),sum(predict_score>0.3),sum(predict_score>0.2),sum(predict_score>0.1))
                 #     print(predict_score)
@@ -209,11 +203,6 @@ with tf.Session(config=config1) as sess:
             # get state and reward
 
             s1P, r, featurep,score,r2 = env.get_state()
-            predict_score = linucb_agent.return_upper_bound(featurep)
-            predict_score[predict_score<0]=0;
-            predict_score=predict_score/(sum(predict_score))
-            p_mat=np.diag(predict_score)
-            s1P[:, :, 5] = p_mat
             s1 = network.processState(s1P, N_station)
 
             total_steps += 1
@@ -224,32 +213,40 @@ with tf.Session(config=config1) as sess:
                     e -= stepDrop
             # episode buffer
             # we don't store the initial 200 steps of the simulation, as warm up periods
-            newr=[r]*N_station
+            newr=r*np.ones((N_station))
             for station in range(N_station):
                 if a[station] == -1:
                     #newr[station]=0
-                    a[station] = N_station
+                    a[station] = station
 
-
-            global_epi_buffer.append(np.reshape(np.array([s, a, newr, s1,feature,score,featurep]), [1,7]))
-            global_bandit_buffer.append(np.reshape(np.array([s, a, newr, s1,feature,score,featurep]), [1,7]))
+            v1=np.reshape(np.array([s, a, newr, s1,feature,score,featurep]), [1,7])
+            global_epi_buffer.append(v1)
+            global_bandit_buffer.append(v1)
 
             #exp replay
+            # buffer_count+=1
+            # if buffer_count>=2*trace_length:
+            #     #pop the first trace length items
+            #     newbufferArray=[]
+            #     bufferArray=global_epi_buffer[:trace_length]
+            #     for bf in range(trace_length):
+            #         #recalibrate the rewards
+            #         reward_vec=sum([(y**id)*global_epi_buffer[bf+id][0][2] for id in range(trace_length)])
+            #         bufferArray[bf][0][2]=reward_vec
+            #     exp_replay.add(bufferArray)
+            #     global_epi_buffer=global_epi_buffer[trace_length:]
+            #     buffer_count-=trace_length
+
             buffer_count+=1
             if buffer_count>=2*trace_length:
-                #pop the first trace length items
-                newbufferArray=[]
-                bufferArray=global_epi_buffer[:trace_length]
-                for bf in range(trace_length):
-                    #recalibrate the rewards
-                    reward_vec=sum([(y**id)*np.array(global_epi_buffer[bf+id][0][2]) for id in range(trace_length)])
-                    bufferArray[bf][0][2]=reward_vec
-                exp_replay.add(bufferArray)
+                for it in range(trace_length):
+                    bufferArray=np.array(global_epi_buffer)
+                    exp_replay.add(bufferArray[it:it+trace_length])
                 global_epi_buffer=global_epi_buffer[trace_length:]
                 buffer_count-=trace_length
 
             if total_steps % (500) == 0 and i>4:
-                linubc_train = bandit_buffer.sample(batch_size * 10)
+                linubc_train = bandit_buffer.sample(batch_size * 20)
                 linucb_agent.update(linubc_train[:, 4], linubc_train[:, 1], linubc_train[:, 5])
 
             #use a single buffer
@@ -262,6 +259,7 @@ with tf.Session(config=config1) as sess:
                     trainBatch = exp_replay.sample(batch_size, trace_length)
                     # print('LINUCB update time:',time.time()-t1)
                     train_predict_score=linucb_agent.return_upper_bound_batch(trainBatch[:,6])
+                    train_predict_score=train_predict_score*exp_dist
                    # train_predict_score[train_predict_score<0.312]=100
                    # train_predict_score[train_predict_score>=0.312] =0
                    #  predict_in=np.zeros((batch_size*trace_length,N_station+1))
@@ -276,22 +274,19 @@ with tf.Session(config=config1) as sess:
                     t1=time.time()
                     for station in range(N_station):
                         tr, t_action = agent.train_prepare(trainBatch, station)
-                        tp=train_predict_score;
-                        tp=(train_predict_score*exp_dist)/distance[station,:]
+                        tp=train_predict_score/distance[station,:]
                         af=tp<e_threshold
                         bf=tp>=e_threshold
                         tp[af]=100
                         tp[bf]=0
                         tp[:,station]=0;
-                        predict_in=np.zeros((batch_size*trace_length,N_station+1))
-                        predict_in[:,:-1]=tp
-                        Q_input_dict[agent.predict_score[station]] = predict_in
+                        Q_input_dict[agent.predict_score[station]] = tp
 
                         Q_input_dict[agent.rewards[station]] = tr
 
                     targetz = sess.run(Q1_in, feed_dict=Q_input_dict)
 
-                    #print('targetz update time:',time.time()-t1)
+                    # print('targetz update time:',time.time()-t1)
                     #train
 
                     t1=time.time()
@@ -307,29 +302,10 @@ with tf.Session(config=config1) as sess:
                     #train now
                     sess.run(Q_train,feed_dict=Q_train_dict)
 
-                    #print('train time:', time.time() - t1)
+                    # print('train time:', time.time() - t1)
                     # print('Sequential Train time:', time.time()-t1)
 
-# ---------------------------- Sequential Training -----------------------------------------
-#                 for station in range(N_station):
-#                     if total_steps % (update_freq) == 0:
-#                         stand_agent[station].update_target_net()  # soft update target network
-#                         # Reset the recurrent layer's hidden state
-#                         if prioritized:
-#                             tree_idx, trainBatch, ISWeights = stand_agent[station].buffer.sample(batch_size,
-#                                                                                                 trace_length)
-#                             abs_error = stand_agent[station].per_train(trainBatch, trace_length, batch_size, ISWeights)
-#                             stand_agent[station].buffer.batch_update(tree_idx, abs_error)
-#
-#                         else:
-#                             stand_agent[station].train(trainBatch, trace_length, batch_size,linear_model,e,station,N_station,train_predict_score)
 
-                # if total_steps % (update_freq) == 0:
-                #     print('Sequential Train time:', time.time() - t1)
-                # # update reward after the warm up period
-                #
-                # if total_steps > pre_train_steps and total_steps % (update_freq) == 0 and silent == 0:
-                #     print('training time:', time.time() - t1)
             rAll += r
             rAll_unshape+=r2
             # swap state
@@ -338,29 +314,18 @@ with tf.Session(config=config1) as sess:
             feature=featurep
 
             #preocess bandit buffer
-        for epi in range(len(global_bandit_buffer)-trace_length):
+        for epi in range(len(global_bandit_buffer)-2*trace_length):
                # print(global_bandit_buffer[i])
-            score=np.mean([global_bandit_buffer[epi+k][0][5] for k in range(trace_length)],axis=0)
+            score=np.mean([global_bandit_buffer[epi+k][0][5] for k in range(2*trace_length)],axis=0)
             record=global_bandit_buffer[epi]
             record[0][5]=score; #replay the score
             bandit_buffer.add(record)
-            # print('iteration time:',time.time()-tall)
-            ## -----------------can be removed ---------------
-        # Add the episode to the experience buffer
-        # for station in range(N_station):
-        #     bufferArray = np.array(episodeBuffer[station])
-        #     tempArray = []
-        #     # now we break this bufferArray into tiny steps, according to the step length
-        #     # lets allow overlapping for halp of the segment
-        #     # e.g., if trace_length=20, we store [0-19] and [10-29]....keep this
-        #     for point in range(2 * (len(bufferArray) + 1 - trace_length) // trace_length):
-        #         stand_agent[station].remember(
-        #             bufferArray[(point * (trace_length // 2)):(point * (trace_length // 2) + trace_length)])
+
 
 
         jList.append(j)
         rList.append(rAll)  # reward in this episode
-        print('Episode:', i, ', totalreward:', rAll, ', Old reward:', rAll_unshape,', total serve:', total_serve, ', total leave:', total_leave, ', total_cpu_time:',time.time()-tinit,
+        print('Episode:', i, ', totalreward:', rAll, ', old reward:',rAll_unshape,', total serve:', total_serve, ', total leave:', total_leave, ', total_cpu_time:',time.time()-tinit,
               ', terminal_taxi_distribution:', [len(v) for v in env.taxi_in_q], ', terminal_passenger:',
               [len(v) for v in env.passenger_qtime], e)
         reward_out.write(str(i) + ',' + str(rAll) + '\n')

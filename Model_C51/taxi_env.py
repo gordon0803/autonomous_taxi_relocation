@@ -38,8 +38,6 @@ class taxi_agent():
         self.destination = None
         self.time_to_destination = 0
 
-
-
 class taxi_simulator():
     def __init__(self, arrival_rate, OD_mat, dist_mat, time_mat, taxi_input):
         # lamba is a vector of size 1 by N
@@ -108,6 +106,7 @@ class taxi_simulator():
 
         for i in range(len(action)):
             if action[i] > -1:
+                self.current_action[i]=action[i] #remember the action taken
                 if self.taxi_in_q[i]:
                     taxi = self.taxi_in_q[i].popleft()  # relocate the first taxi
                     time_to_destination = self.travel_time[i][action[i]]  # from i to action[i]
@@ -126,9 +125,10 @@ class taxi_simulator():
         self.taxi_charging()
         # step 3: arrive
         self.taxi_arrive()
-        # step 4: update and serve passenger
+        # step 4: update passenger
         self.passenger_update()
-
+        # step 5: serve passengers
+        self.passenger_serve()
 
         return self.served_pass,self.left_pass
 
@@ -219,7 +219,11 @@ class taxi_simulator():
             #     self.passenger_destination[i].append(destination[j])
 
 
-            #Serve Passengers
+
+    # 6: serve all the passengers with the available taxis
+    def passenger_serve(self):
+        for i in range(self.N):
+            # loop over all stands
             for j in range(len(self.taxi_in_q[i])):
                 # loop over available taxis in the stand
                 # serve passenger
@@ -239,7 +243,6 @@ class taxi_simulator():
                 else:
                     # no available passengers, break the loop
                     break
-
 
     # 7: system states summary
     def env_summary(self):
@@ -288,25 +291,32 @@ class taxi_simulator():
         # give the states of the system after all the executions
         # the state of the system is a 3 N by N matrix
         max_passenger=50;
-        state = np.ones([self.N, self.N, 6])
+        state = np.ones([self.N, self.N, 5])
         passenger_gap = np.zeros((self.N, self.N))
         taxi_in_travel = np.zeros((self.N, self.N))
         taxi_in_relocation = np.zeros((self.N, self.N))
         taxi_in_charge=np.zeros((self.N,self.N))
         taxi_in_q=np.zeros((self.N,self.N))
+        previous_action=np.zeros((self.N,self.N))
 
-        incoming_taxi=np.zeros((self.N))
-        awaiting_pass=np.zeros((self.N))
+        incoming_taxi=np.array([0]*self.N)
+        awaiting_pass=np.array([0]*self.N)
 
         for i in range(self.N):
             if self.taxi_in_charge[i]:
                 taxi_in_charge[i,i]=len(self.taxi_in_charge[i])
             if self.taxi_in_q[i]:
                 taxi_in_q[i,i]=len(self.taxi_in_q[i])
+            if not self.previous_action[i]==-1:
+                previous_action[i,self.previous_action[i]]=1
 
+
+        self.previous_action=self.current_action #swap
+
+
+        for i in range(self.N):
             passenger_gap[i, i] = min(len(self.passenger_qtime[i]),max_passenger)/max_passenger
             awaiting_pass[i]=min(len(self.passenger_qtime[i]),max_passenger)/max_passenger
-
         #
         for t in self.taxi_in_travel:
             taxi_in_travel[t.origin, t.destination] += 1
@@ -329,19 +339,12 @@ class taxi_simulator():
         state[:, :, 0] = passenger_gap;
         state[:, :, 1] = taxi_in_travel;
         state[:, :, 2] = taxi_in_relocation;
-        state[:, :, 3] = taxi_in_charge;
-        state[:, :, 4] = taxi_in_q;
-        # state[:, :, 5] = previous_action;
+        state[:, :, 3] = taxi_in_q;
+        state[:,:,4] = taxi_in_charge;
         # reward
         total_taxi_in_travel = taxi_in_travel.sum()
         total_taxi_in_relocation = taxi_in_relocation.sum()
         reward = (total_taxi_in_travel-total_taxi_in_relocation)
-
-        newreward=reshape_reward(reward,0.1) #reshape the reward into a inverse-huber loss
-
-        # newreward=reward
-
-
 
 
         #calculate linear features and scores
@@ -353,34 +356,23 @@ class taxi_simulator():
             if self.taxi_in_q[i]: #drivers waiting passengers
                 # self.score[i]*=sigmoid(-min(len(self.taxi_in_q[i]),20))
                 # self.score[i]=max(self.score[i],0.1)
-                s=0
+                self.score[i]=0
             else:
                 # self.score[i]*=sigmoid(min(len(self.passenger_qtime[i]),20))
                 # self.score[i]=min(self.score[i],1) #bound to [0,1]
-                s=1
+                self.score[i]=1
 
-            score.append(s)
+            score.append(self.score[i])
 
 
 
-        return state, newreward, np.array(feature),np.array(score),reward
+        return state, reward, np.array(feature),np.array(score),reward
 
 
 def safe_div(x,y):
     if y == 0:
         return 0
     return x / y
-
-def reshape_reward(r,v):
-    #v is the clipping value
-    if r>v:
-        a=1/(2*v)
-        b=v/2;
-        r=a*(r**2)+b
-
-    return r
-
-
 
 def sigmoid(x):
     return 0.9+0.5/(1+math.exp(-x))

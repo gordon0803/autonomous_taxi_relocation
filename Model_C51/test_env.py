@@ -3,7 +3,7 @@
 import taxi_env
 import time
 from collections import deque
-N_station=10
+N_station=80
 l1=[5 for i in range(N_station)]
 OD_mat=[l1 for i in range(N_station)]
 
@@ -11,7 +11,7 @@ distance=OD_mat
 
 travel_time=OD_mat
 
-arrival_rate=[1 for i in range(N_station)]
+arrival_rate=[10 for i in range(N_station)]
 
 taxi_input=10
 
@@ -28,11 +28,10 @@ print('Travel state:',taxi_in_travel)
 print('Relocation state:',taxi_in_relocation)
 
 start=time.time()
-act=[3 for i in range(N_station)]
 for i in range(1000):
-    taxi_simulator.step(act)
-    taxi_state,reward,a,b=taxi_simulator.get_state()
-
+    print(i)
+    taxi_simulator.step([-1 for i in range(N_station)])
+    taxi_state,reward=taxi_simulator.get_state()
 
 end=time.time()-start
-print('Time per step:',end/1000, 'total time:', end)
+print('Time per step:',end/1000)
