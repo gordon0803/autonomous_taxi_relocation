@@ -323,6 +323,8 @@ with tf.Session(config=config1) as sess:
 
         jList.append(j)
         rList.append(rAll)  # reward in this episode
+        
+        sys_tracker.record_time(env)
         print('Episode:', i, ', totalreward:', rAll, ', old reward:',rAll_unshape,', total serve:', total_serve, ', total leave:', total_leave, ', total_cpu_time:',time.time()-tinit,
               ', terminal_taxi_distribution:', [len(v) for v in env.taxi_in_q], ', terminal_passenger:',
               [len(v) for v in env.passenger_qtime], e)
@@ -340,3 +342,4 @@ with tf.Session(config=config1) as sess:
 # saver.save(sess,path+'/model-'+str(i)+'.cptk')
 reward_out.close()
 sys_tracker.save('IDRQN')
+sys_tracker.playback(-1)

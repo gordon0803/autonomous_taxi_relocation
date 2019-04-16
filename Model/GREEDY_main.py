@@ -141,4 +141,4 @@ for i in range(num_episodes):
     reward_out.write(str(j)+','+str(rAll)+'\n')
 reward_out.close()
 
-sys_tracker.save('greedy')
+sys_tracker.save('greedy',env)

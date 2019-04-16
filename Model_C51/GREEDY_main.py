@@ -137,9 +137,12 @@ for i in range(num_episodes):
 
     jList.append(j)
     rList.append(rAll)  # reward in this episode
+    sys_tracker.record_time(env)
     print('Episode:', i, ', totalreward:', rAll, ', total serve:', total_serve, ', total leave:', total_leave, ', terminal_taxi_distribution:', [len(v) for v in env.taxi_in_q], ', terminal_passenger:',[len(v) for v in env.passenger_qtime])
 
     reward_out.write(str(j)+','+str(rAll)+'\n')
 reward_out.close()
 
-sys_tracker.save('greedy')
+sys_tracker.save('greedy',env)
+sys_tracker.playback(-1)
+

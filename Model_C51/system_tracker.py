@@ -72,6 +72,15 @@ class system_tracker():
 			}
 			self.frameinfo[-1].append(oneframeinfo)
 
+	def record_time(self,env):
+		if(self.recording):
+		   data = dict()
+		   data['served_passengers'] = list(env.served_passengers)
+		   data['served_passengers_waiting_time'] = list(env.served_passengers_waiting_time)
+		   data['leaved_passengers']= list(env.leaved_passengers)
+		   data['leaved_passengers_waiting_time']= list(env.leaved_passengers_waiting_time)
+		   self.frameinfo[-1].append(data)
+
 	def save(self, name):
 		data = dict()
 		data['baseinfo'] = self.baseinfo
@@ -93,7 +102,7 @@ class system_tracker():
 		print('-----------------------------------------------------------------')
 		if mode == 'analytic':
 			dataset = self.frameinfo[episode]
-			avg, std, counts = self.process_data(dataset)
+			avg, std, counts, served_passengers, average_waiting_time, leaved_passengers, left_average_waiting_time = self.process_data(dataset)
 			print('Summary (per step):\t', 'average \t std')
 			print('Taxi in travel    :\t %.3f \t %.2f' %  (avg[0], std[0]))
 			print('Taxi in relocation:\t %.3f \t %.2f'%  (avg[1], std[1]))
@@ -101,6 +110,10 @@ class system_tracker():
 			print('Passenger gap (Std) : ', ["%.2f" % v for v in std[2]])
 			print('Taxi in charge (Mean): ', ["%.2f" % v for v in avg[3]])
 			print('Taxi in charge (Std) : ', ["%.2f" % v for v in std[3]])
+			print('Passenger served: ', served_passengers)
+			print('Passenger waiting time(Mean) : ', average_waiting_time)
+			print('Passenger left : ', leaved_passengers)
+			print('Time before left (Mean) : ', left_average_waiting_time)
 			for i in range(len(counts)):
 
 				print('Relocatoin choice ',i,': ', ["%s: %.2f" % (k,v) for k,v in counts[i].items()])
@@ -121,7 +134,10 @@ class system_tracker():
 		for i in range(self.N_station):
 			actions.append(list())
 			counts.append(dict())
-		for oneframeinfo in dataset:
+		print(len(dataset))
+		for oneframeinfo in dataset[:(len(dataset)-1)]:
+
+			#print(oneframeinfo)
 			avg[0]+= oneframeinfo['taxi_in_travel']
 			avg[1]+=oneframeinfo['taxi_in_relocation']
 			std[0]+= oneframeinfo['taxi_in_travel']**2
@@ -144,7 +160,11 @@ class system_tracker():
 			unique, count = np.unique(actions[i], return_counts=True)
 			for key, value in zip(unique, count):
 				counts[i][str(key)] = value/self.max_epLength
-		return avg, std, counts
+		served_passengers = np.array(dataset[-1]['served_passengers'])
+		average_waiting_time = np.array(dataset[-1]['served_passengers_waiting_time'])/(served_passengers*1.0)
+		leaved_passengers = np.array(dataset[-1]['leaved_passengers'])
+		left_average_waiting_time = np.array(dataset[-1]['leaved_passengers_waiting_time'])/(leaved_passengers*1.0)
+		return avg, std, counts, served_passengers,average_waiting_time,leaved_passengers,left_average_waiting_time
 
 
 

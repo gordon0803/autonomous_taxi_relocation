@@ -53,10 +53,14 @@ class system_tracker():
 		}
 		self.frameinfo[str(self.episode_count)].append(oneframeinfo)
 
-	def save(self, name):
+	def save(self, name, env):
 		data = dict()
 		data['baseinfo'] = self.baseinfo
 		data['frameinfo'] = self.frameinfo
+                data['served_passengers'] = env.served_passengers
+                data['served_passengers_waiting_time'] = env.served_passengers_waiting_time
+                data['leaved_passengers']= env.leaved_passengers
+                data['leaved_passengers_waiting_time']= env.leaved_passengers_waiting_time
 		#print(data['frameinfo'])
 		with open('log/sim_log_'+name+'_'+datetime.now().strftime('%Y-%m-%d %H-%M-%S')+'.json', 'w') as outfile:
 		    json.dump(data, outfile)

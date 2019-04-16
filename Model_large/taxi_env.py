@@ -72,6 +72,9 @@ class taxi_simulator():
         self.taxi_in_charge = [deque([])  for i in range(self.N)]  # taxis charging at each station
         # self.gamma_pool=np.random.gamma(10,size=500000).tolist() #maintain a pool of gamma variable of size 50000
         self.gamma_pool=(50*np.ones(500000)).tolist()
+        # initialize waiting time tracker
+        self.leaved_passengers = np.zeros(self.N)
+        self.leaved_passengers_waiting_time = np.zeros(self.N)
 
     # assign the initial list of taxis
     def init_taxi(self):
@@ -191,6 +194,7 @@ class taxi_simulator():
                 else:
                  # still in travel, send this taxi back to the travel list
                     self.taxi_in_relocation.append(taxi)
+
     # 5: update passenger waiting, leave, and generate passengers
     def passenger_update(self):
         for i in range(self.N):
@@ -199,10 +203,12 @@ class taxi_simulator():
 
             tp=len(self.passenger_qtime[i])
             if self.passenger_qtime[i]:
-                self.passenger_qtime[i], self.passenger_expect_wait[i] = util.waiting_time_update(self.passenger_qtime[i],self.passenger_expect_wait[i])
+                self.passenger_qtime[i], self.passenger_expect_wait[i], left_waiting_time = util.waiting_time_update(self.passenger_qtime[i],self.passenger_expect_wait[i])
 
-            self.left_pass+=len(self.passenger_qtime[i])-tp
-
+                self.left_pass+=len(self.passenger_qtime[i])-tp
+                # record information
+                self.leaved_passengers[i]+=tp-len(self.passenger_qtime[i])
+                self.leaved_passengers_waiting_time[i]+=left_waiting_time
             # new passengers
             n_pass_arrive = np.random.poisson(self.arrival_rate[i])
             destination = np.random.choice(self.station_list, n_pass_arrive, self.OD_split[i]).tolist()
@@ -214,7 +220,6 @@ class taxi_simulator():
             self.passenger_expect_wait[i]+=expect_wait_append
             # del self.gamma_pool[:n_pass_arrive]
             self.passenger_destination[i] += destination
-
 
             # for j in range(n_pass_arrive):
             #     self.passenger_qtime[i].append(0)
@@ -231,18 +236,21 @@ class taxi_simulator():
                 # loop over available taxis in the stand
                 # serve passenger
                 if len(self.passenger_qtime[i]) > 0:
-                    self.passenger_qtime[i].popleft()  # remove the first passenger
+                    waiting_time = self.passenger_qtime[i].popleft()  # remove the first passenger
                     self.passenger_expect_wait[i].popleft()
-                    if self.taxi_in_q[i]:
-                        taxi = self.taxi_in_q[i].popleft()  # remove the first taxi in q
-                        # first determine if the destination of the passenger
-                        destination=self.passenger_destination[i].popleft()
-                        time_to_destination = self.travel_time[i][destination]
-                        distance_to_destination = self.distance[i][destination]
-                        taxi.trip(i, destination, time_to_destination, distance_to_destination)
-                        # send this taxi to travel Q
-                        self.taxi_in_travel.append(taxi)
-                        self.served_pass+=1
+                    #if self.taxi_in_q[i]:
+                    taxi = self.taxi_in_q[i].popleft()  # remove the first taxi in q
+                    # first determine if the destination of the passenger
+                    destination=self.passenger_destination[i].popleft()
+                    time_to_destination = self.travel_time[i][destination]
+                    distance_to_destination = self.distance[i][destination]
+                    taxi.trip(i, destination, time_to_destination, distance_to_destination)
+                    # send this taxi to travel Q
+                    self.taxi_in_travel.append(taxi)
+                    self.served_pass+=1
+                    # record information
+                    self.served_passengers[i]+=1
+                    self.served_passengers_waiting_time[i]+=waiting_time
                 else:
                     # no available passengers, break the loop
                     break
@@ -288,6 +296,10 @@ class taxi_simulator():
 
         #probability of getting a passenger at a particular station
         self.score=[1]*self.N
+        self.served_passengers = np.zeros(self.N)
+        self.served_passengers_waiting_time = np.zeros(self.N)
+        self.leaved_passengers = np.zeros(self.N)
+        self.leaved_passengers_waiting_time = np.zeros(self.N)
 
 
     def get_state(self):
@@ -367,8 +379,6 @@ class taxi_simulator():
                 self.score[i]=1
 
             score.append(self.score[i])
-
-
 
         return state, newreward, np.array(feature),np.array(score),reward
 
