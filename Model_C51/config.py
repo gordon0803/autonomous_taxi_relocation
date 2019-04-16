@@ -24,7 +24,7 @@ TRAIN_CONFIG = {
     'softmax_action':False, #use softmax or not
     'silent': 1, #0 for print, 1 for no print
     'use_linear':1,
-    'use_tracker':0
+    'use_tracker':1
 }
 
 

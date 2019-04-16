@@ -59,7 +59,7 @@ tau = 0.1
 
 # --------------Simulation initialization
 sys_tracker = system_tracker()
-sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station)
+sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station, num_episodes, max_epLength)
 env = te.taxi_simulator(arrival_rate, OD_mat, distance, travel_time, taxi_input)
 env.reset()
 print('System Successfully Initialized!')
@@ -96,8 +96,7 @@ with tf.Session(config=config1) as sess:
     # targetOps=[]
     linear_model=network.linear_model(N_station)
     for station in range(N_station):
-        stand_agent.append(DRQN_agent.drqn_agent(str(station), N_station, h_size, tau, sess, batch_size, trace_length,
-                                                 prioritized=prioritized, is_gpu=use_gpu))
+        stand_agent.append(DRQN_agent.drqn_agent_efficient(str(station), N_station, h_size, tau, sess, batch_size, trace_length, prioritized=prioritized, is_gpu=use_gpu))
 
     exp_replay=network.experience_buffer() #a single buffer holds everything
     global_init = tf.global_variables_initializer()
