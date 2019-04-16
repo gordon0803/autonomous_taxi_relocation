@@ -5,18 +5,20 @@ import pickle
 TRAIN_CONFIG = {
     'batch_size':16,
     'trace_length': 10,
-    'update_freq': 20,
+    'update_freq': 30,
+    'lstm_unit': 256,
     'y': .99,
+    'elimination_threshold': 0.8,
     'startE':1,
-    'endE':0.05,
-    'anneling_steps':300*1000,
+    'endE':0.02,
+    'anneling_steps':200*1500,
     'num_episodes':1000,
     'buffer_size':5000,
     'prioritized':0,
     'load_model':False,
     'warmup_time':-1,
     'model_path':'./drqn',
-    'h_size':600, #The size of the final convolutional layer before splitting it into Advantage and Value streams.
+    'h_size':1152, #The size of the final convolutional layer before splitting it into Advantage and Value streams.
     'max_epLength':1000, #The max allowed length of our episode.
     'pre_train_steps':20000, #How many steps of random actions before traning begins
     'softmax_action':False, #use softmax or not

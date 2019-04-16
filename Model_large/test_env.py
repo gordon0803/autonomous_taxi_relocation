@@ -3,25 +3,17 @@
 import taxi_env
 import time
 from collections import deque
-import numpy as np
+N_station=50
+l1=[5 for i in range(N_station)]
+OD_mat=[l1 for i in range(N_station)]
 
+distance=OD_mat
 
-N_station = 100;
-distance = np.loadtxt(open('nycdata/selected_dist.csv','rb'),delimiter=',')
-travel_time = np.loadtxt(open('nycdata/selected_time.csv','rb'),delimiter=',')
-OD_mat=np.loadtxt(open('nycdata/od_100.csv','rb'),delimiter=',')
+travel_time=OD_mat
 
+arrival_rate=[10 for i in range(N_station)]
 
-OD_mat=OD_mat/180;  #every 20 seconds
-travel_time=travel_time*3;
-arrival_rate=OD_mat.sum(axis=0) #row sum for passenger arrival at the station
-incoming__taxi=OD_mat.sum(axis=1)
-
-OD_mat=OD_mat.tolist()
-
-
-taxi_input = 50
-
+taxi_input=40
 
 
 taxi_simulator=taxi_env.taxi_simulator(arrival_rate,OD_mat,distance,travel_time,taxi_input)
@@ -38,8 +30,12 @@ print('Relocation state:',taxi_in_relocation)
 start=time.time()
 for i in range(1000):
     print(i)
+    t2=time.time()
     taxi_simulator.step([-1 for i in range(N_station)])
-    # taxi_state,reward=taxi_simulator.get_state()
+    print(time.time()-t2)
+    t2=time.time()
+    s1P, r, featurep, score=taxi_simulator.get_state()
+    print(time.time()-t2)
 
 end=time.time()-start
 print('Time per step:',end/1000)

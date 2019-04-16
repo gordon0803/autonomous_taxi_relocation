@@ -71,7 +71,7 @@ class taxi_simulator():
         self.taxi_in_q = [deque([])  for i in range(self.N)]  # taxis waiting in the queue of each station
         self.taxi_in_charge = [deque([])  for i in range(self.N)]  # taxis charging at each station
         # self.gamma_pool=np.random.gamma(10,size=500000).tolist() #maintain a pool of gamma variable of size 50000
-        self.gamma_pool=(15*np.ones(500000)).tolist()
+        self.gamma_pool=(50*np.ones(500000)).tolist()
 
     # assign the initial list of taxis
     def init_taxi(self):
@@ -80,6 +80,9 @@ class taxi_simulator():
         taxi_input = self.taxi_input
         #create random taxi initial numbers
         rnd_array = np.random.multinomial(taxi_input*self.N, np.ones(self.N) / self.N, size=1)[0]
+        for s in range(self.N):
+            rnd_array[s]=self.taxi_input
+
         if not isinstance(taxi_input, list):
             taxi_input = rnd_array
 
@@ -100,7 +103,7 @@ class taxi_simulator():
         # Use -1 to denote no relocation
         # check gamma pool
         if len(self.gamma_pool) < 10000:
-            self.gamma_pool = (15*np.ones(500000)).tolist()
+            self.gamma_pool = (50*np.ones(500000)).tolist()
 
         self.current_action=[-1]*self.N
 
@@ -278,7 +281,7 @@ class taxi_simulator():
         self.taxi_in_q = [deque([])  for i in range(self.N)]  # taxis waiting in the queue of each station
         self.taxi_in_charge = [deque([])  for i in range(self.N)]  # taxis charging at each station
         self.init_taxi()
-        self.gamma_pool = (15*np.ones(500000)).tolist()  # maintain a pool of gamma variable of size 50000
+        self.gamma_pool = (50*np.ones(500000)).tolist()  # maintain a pool of gamma variable of size 50000
         #current action
         self.previous_action=[-1]*self.N #no action made
         self.current_action=[-1]*self.N
@@ -291,7 +294,7 @@ class taxi_simulator():
         # give the states of the system after all the executions
         # the state of the system is a 3 N by N matrix
         max_passenger=50;
-        state = np.ones([self.N, self.N, 6])
+        state = np.zeros([self.N, self.N, 4])
         passenger_gap = np.zeros((self.N, self.N))
         taxi_in_travel = np.zeros((self.N, self.N))
         taxi_in_relocation = np.zeros((self.N, self.N))
@@ -339,13 +342,13 @@ class taxi_simulator():
         state[:, :, 0] = passenger_gap;
         state[:, :, 1] = taxi_in_travel;
         state[:, :, 2] = taxi_in_relocation;
-        state[:, :, 3] = taxi_in_charge;
-        state[:, :, 4] = taxi_in_q;
-        state[:, :, 5] = previous_action;
+        state[:, :, 3] = taxi_in_q;
         # reward
         total_taxi_in_travel = taxi_in_travel.sum()
         total_taxi_in_relocation = taxi_in_relocation.sum()
-        reward = (4*total_taxi_in_travel-total_taxi_in_relocation)*self.total_taxi
+        reward = (total_taxi_in_travel-total_taxi_in_relocation)
+        newreward=reshape_reward(reward,0.2)
+        newreward=reward
 
 
         #calculate linear features and scores
@@ -367,7 +370,7 @@ class taxi_simulator():
 
 
 
-        return state, reward, feature,score
+        return state, newreward, np.array(feature),np.array(score),reward
 
 
 def safe_div(x,y):
@@ -377,3 +380,20 @@ def safe_div(x,y):
 
 def sigmoid(x):
     return 0.9+0.5/(1+math.exp(-x))
+
+
+
+
+def reshape_reward(r,v):
+    #v is the clipping value
+    # if r>v:
+    #     a=1/(2*v)
+    #     b=v/2;
+    #     r=a*(r**2)+b
+    if r>0:
+        r=np.exp(5*r)-1
+    else:
+        r=-np.exp(-5*r)+1
+
+    r/=(np.exp(5)-1)
+    return r

@@ -159,17 +159,12 @@ with tf.Session(config=config1) as sess:
                         if env.taxi_in_q[station]:
                             a[station] = np.random.randint(0, N_station)  # random actions for each station
                 else:
-                    t1=time.time()
-                    for stand in stand_agent:
-                        Qp_input_dict[stand.mainQN.scalarInput] = [s]
-
-                    pd=sess.run(Qp_in,feed_dict=Qp_input_dict)
-                    at=[-1]*N_station
                     for station in range(N_station):
                         if env.taxi_in_q[station]:
-                            at[station]=pd[station][0]
-                            if at[station]==N_station:
-                                at[station]=station
+                            a1 = stand_agent[station].predict_regular(s)
+                            a[station] = a1[0]  # action performed by DRQN
+                            if a[station] == N_station:
+                                a[station] = station
 
             else:  # use e-greedy
                 predict_score = sess.run(linear_model.linear_Yh, feed_dict={linear_model.linear_X: [feature]})
@@ -213,60 +208,59 @@ with tf.Session(config=config1) as sess:
                 #train linear multi-arm bandit first
 
                 if total_steps % (update_freq) == 0:
-                    sess.run(linear_model.linear_update, feed_dict={linear_model.linear_X: np.vstack(trainBatch[:, 4]),
-                                                                    linear_model.linear_Y: np.vstack(trainBatch[:, 5])})
+                    # sess.run(linear_model.linear_update, feed_dict={linear_model.linear_X: np.vstack(trainBatch[:, 4]),
+                    #                                                 linear_model.linear_Y: np.vstack(trainBatch[:, 5])})
                     train_predict_score = sess.run(linear_model.linear_Yh,
                                                   feed_dict={linear_model.linear_X: np.vstack(trainBatch[:, 6])})
                     t1=time.time()
-                    var=np.vstack(trainBatch[:, 3])
-                    for stand in stand_agent:
-                        stand.update_target_net()  # soft update target network
-                        Q_input_dict[stand.mainQN.scalarInput]=var
-                        Q_input_dict[stand.mainQN.trainLength]=trace_length
-                        Q_input_dict[stand.mainQN.batch_size]= batch_size
-                        Q_input_dict[stand.targetQN.scalarInput]= var
-                        Q_input_dict[stand.targetQN.trainLength]=trace_length
-                        Q_input_dict[stand.targetQN.batch_size]= batch_size
-
-                    # Q1=sess.run(Q1_in,feed_dict=Q_input_dict)
-                    # Q2=sess.run(Q2_in,feed_dict=Q_input_dict)
-                    Qvalue=sess.run(Q1_in+Q2_in,feed_dict=Q_input_dict)
-                    Q1=Qvalue[:len(Qvalue)//2]
-                    Q2=Qvalue[len(Qvalue)//2:]
-
-
-                    var=np.vstack(trainBatch[:, 0])
-                    for station in range(N_station):
-                        tQ,t_action=stand_agent[station].train_prepare(trainBatch, trace_length, batch_size,linear_model,e,station,N_station,train_predict_score,Q1[station],Q2[station],config.TRAIN_CONFIG['use_linear'])
-                        Q_train_dict[stand_agent[station].mainQN.scalarInput]=var
-                        Q_train_dict[stand_agent[station].mainQN.targetQ]= tQ
-                        Q_train_dict[stand_agent[station].mainQN.actions]= t_action
-                        Q_train_dict[stand_agent[station].mainQN.trainLength]=trace_length
-                        Q_train_dict[stand_agent[station].mainQN.batch_size]=batch_size
-
-                    #train now
-                    sess.run(Q_train,feed_dict=Q_train_dict)
-
+                    # var=np.vstack(trainBatch[:, 3])
+                    # for stand in stand_agent:
+                    #     stand.update_target_net()  # soft update target network
+                    #     Q_input_dict[stand.mainQN.scalarInput]=var
+                    #     Q_input_dict[stand.mainQN.trainLength]=trace_length
+                    #     Q_input_dict[stand.mainQN.batch_size]= batch_size
+                    #     Q_input_dict[stand.targetQN.scalarInput]= var
+                    #     Q_input_dict[stand.targetQN.trainLength]=trace_length
+                    #     Q_input_dict[stand.targetQN.batch_size]= batch_size
+                    #
+                    # # Q1=sess.run(Q1_in,feed_dict=Q_input_dict)
+                    # # Q2=sess.run(Q2_in,feed_dict=Q_input_dict)
+                    # Qvalue=sess.run(Q1_in+Q2_in,feed_dict=Q_input_dict)
+                    # Q1=Qvalue[:len(Qvalue)//2]
+                    # Q2=Qvalue[len(Qvalue)//2:]
+                    #
+                    #
+                    # var=np.vstack(trainBatch[:, 0])
+                    # for station in range(N_station):
+                    #     tQ,t_action=stand_agent[station].train_prepare(trainBatch, trace_length, batch_size,linear_model,e,station,N_station,train_predict_score,Q1[station],Q2[station],config.TRAIN_CONFIG['use_linear'])
+                    #     Q_train_dict[stand_agent[station].mainQN.scalarInput]=var
+                    #     Q_train_dict[stand_agent[station].mainQN.targetQ]= tQ
+                    #     Q_train_dict[stand_agent[station].mainQN.actions]= t_action
+                    #     Q_train_dict[stand_agent[station].mainQN.trainLength]=trace_length
+                    #     Q_train_dict[stand_agent[station].mainQN.batch_size]=batch_size
+                    #
+                    # #train now
+                    # sess.run(Q_train,feed_dict=Q_train_dict)
+                    #
                     # print('Sequential Train time:', time.time()-t1)
 
 # ---------------------------- Sequential Training -----------------------------------------
-#                 t1=time.time()
-#                 for station in range(N_station):
-#                     if total_steps % (update_freq) == 0:
-#                         stand_agent[station].update_target_net()  # soft update target network
-#                         # Reset the recurrent layer's hidden state
-#                         if prioritized:
-#                             tree_idx, trainBatch, ISWeights = stand_agent[station].buffer.sample(batch_size,
-#                                                                                                 trace_length)
-#                             abs_error = stand_agent[station].per_train(trainBatch, trace_length, batch_size, ISWeights)
-#                             stand_agent[station].buffer.batch_update(tree_idx, abs_error)
-#
-#                         else:
-#                             stand_agent[station].train(trainBatch, trace_length, batch_size,linear_model,e,station,N_station,train_predict_score)
-#
+                for station in range(N_station):
+                    if total_steps % (update_freq) == 0:
+                        stand_agent[station].update_target_net()  # soft update target network
+                        # Reset the recurrent layer's hidden state
+                        if prioritized:
+                            tree_idx, trainBatch, ISWeights = stand_agent[station].buffer.sample(batch_size,
+                                                                                                trace_length)
+                            abs_error = stand_agent[station].per_train(trainBatch, trace_length, batch_size, ISWeights)
+                            stand_agent[station].buffer.batch_update(tree_idx, abs_error)
+
+                        else:
+                            stand_agent[station].train(trainBatch, trace_length, batch_size,linear_model,e,station,N_station,train_predict_score)
+
 #                 if total_steps % (update_freq) == 0:
 #                     print('Sequential Train time:', time.time() - t1)
-#                 # update reward after the warm up period
+                # update reward after the warm up period
 
                 if total_steps > pre_train_steps and total_steps % (update_freq) == 0 and silent == 0:
                     print('training time:', time.time() - t1)
