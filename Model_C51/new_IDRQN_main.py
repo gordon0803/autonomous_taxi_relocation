@@ -71,6 +71,8 @@ print('System Successfully Initialized!')
 # ------------------Train the network-----------------------
 
 
+#--------------Output record-------------------#
+outf=open('temp_record.txt','w')
 # Set the rate of random action decrease.
 e = startE
 stepDrop = (startE - endE) / anneling_steps
@@ -331,6 +333,8 @@ with tf.Session(config=config1) as sess:
               [len(v) for v in env.passenger_qtime], e,agent.conf)
         reward_out.write(str(i) + ',' + str(rAll) + '\n')
 
+        outf.writelines(str(i)+','+str(rAll)+','+str(total_serve)+','+str(total_leave)+'\n')
+
 
         # Periodically save the model.
         # if i % 100 == 0 and i != 0:
@@ -341,6 +345,7 @@ with tf.Session(config=config1) as sess:
         #             saveToCenter(i,rList,jList,np.reshape(np.array(episodeBuffer),[len(episodeBuffer),5]),\
 # summaryLength,h_size,sess,mainQN,time_per_step)
 # saver.save(sess,path+'/model-'+str(i)+'.cptk')
+outf.close()
 reward_out.close()
 sys_tracker.save('IDRQN')
 sys_tracker.playback(-1)

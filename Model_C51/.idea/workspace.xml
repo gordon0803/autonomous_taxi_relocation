@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="dad78855-d8dd-4cb5-b79d-257bd1a32af0" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Model_large/DRQN_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/DRQN_agent.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/new_IDRQN_main.py" beforeDir="false" afterPath="$PROJECT_DIR$/new_IDRQN_main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Model_large/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Model_large/new_IDRQN_main.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/new_IDRQN_main.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -14,20 +14,20 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/new_IDRQN_main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="647">
-              <caret line="333" lean-forward="true" selection-start-line="333" selection-end-line="333" />
+            <state relative-caret-position="457">
+              <caret line="73" selection-start-line="73" selection-end-line="74" selection-end-column="32" />
             </state>
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/DRQN_agent.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="506">
-              <caret line="277" lean-forward="true" selection-start-line="277" selection-end-line="277" />
+            <state relative-caret-position="4370">
+              <caret line="262" column="35" lean-forward="true" selection-start-line="262" selection-start-column="35" selection-end-line="262" selection-end-column="35" />
             </state>
           </provider>
         </entry>
@@ -51,8 +51,8 @@
     <option name="CHANGED_PATHS">
       <list>
         <option value="$PROJECT_DIR$/config.py" />
-        <option value="$PROJECT_DIR$/new_IDRQN_main.py" />
         <option value="$PROJECT_DIR$/DRQN_agent.py" />
+        <option value="$PROJECT_DIR$/new_IDRQN_main.py" />
       </list>
     </option>
   </component>
@@ -180,17 +180,17 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/new_IDRQN_main.py">
+    <entry file="file://$PROJECT_DIR$/DRQN_agent.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="647">
-          <caret line="333" lean-forward="true" selection-start-line="333" selection-end-line="333" />
+        <state relative-caret-position="4370">
+          <caret line="262" column="35" lean-forward="true" selection-start-line="262" selection-start-column="35" selection-end-line="262" selection-end-column="35" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/DRQN_agent.py">
+    <entry file="file://$PROJECT_DIR$/new_IDRQN_main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="506">
-          <caret line="277" lean-forward="true" selection-start-line="277" selection-end-line="277" />
+        <state relative-caret-position="457">
+          <caret line="73" selection-start-line="73" selection-end-line="74" selection-end-column="32" />
         </state>
       </provider>
     </entry>
