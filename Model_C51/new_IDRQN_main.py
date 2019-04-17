@@ -154,7 +154,7 @@ with tf.Session(config=config1) as sess:
 
         tinit=time.time()
         while j < max_epLength:
-            #agent.update_conf(1.96,anneling_steps)
+            agent.update_conf(1,1.5*anneling_steps)
             tall=time.time()
             j += 1
 
