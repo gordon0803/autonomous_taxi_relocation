@@ -75,7 +75,7 @@ print('System Successfully Initialized!')
 outf=open('temp_record.txt','w')
 # Set the rate of random action decrease.
 e = startE
-stepDrop = (startE - endE) / anneling_steps
+stepDrop = endE**(1/anneling_steps)
 
 # create lists to contain total rewards and steps per episode
 jList = []
@@ -106,8 +106,8 @@ with tf.Session(config=config1) as sess:
     agent=DRQN_agent.drqn_agent_efficient(N_station, h_size, lstm_units,tau, sess, batch_size, trace_length,is_gpu=use_gpu)
     agent.drqn_build()
 
-    exp_replay=network.experience_buffer(10000) #a single buffer holds everything
-    bandit_buffer=network.bandit_buffer(5000)
+    exp_replay=network.experience_buffer(2000) #a single buffer holds everything
+    bandit_buffer=network.bandit_buffer(1000)
     global_init = tf.global_variables_initializer()
     # writer = tf.summary.FileWriter('./graphs', sess.graph)
     # writer.close()1
@@ -156,7 +156,7 @@ with tf.Session(config=config1) as sess:
 
         tinit=time.time()
         while j < max_epLength:
-            agent.update_conf(1,1.5*anneling_steps)
+            # agent.update_conf(1,1.5*anneling_steps)
             tall=time.time()
             j += 1
 
@@ -212,7 +212,7 @@ with tf.Session(config=config1) as sess:
             if total_steps > pre_train_steps and j > warmup_time:
                 # start training here
                 if e > endE:
-                    e -= stepDrop
+                    e*=stepDrop
             # episode buffer
             # we don't store the initial 200 steps of the simulation, as warm up periods
             newr=r*np.ones((N_station))
@@ -251,30 +251,30 @@ with tf.Session(config=config1) as sess:
                 linubc_train = bandit_buffer.sample(batch_size * 20)
                 linucb_agent.update(linubc_train[:, 4], linubc_train[:, 1], linubc_train[:, 5])
 
+
             #use a single buffer
             if total_steps > pre_train_steps and j > warmup_time:
                 #train linear multi-arm bandit first, we periodically update this (every 10*update_fequency steps)
                 t1 = time.time()
                 if total_steps % (update_freq) == 0:
                     agent.update_target_net()
-
-                    trainBatch = exp_replay.sample(batch_size, trace_length)
-                    # print('LINUCB update time:',time.time()-t1)
-                    train_predict_score=linucb_agent.return_upper_bound_batch(trainBatch[:,6])
-                    train_predict_score=train_predict_score*exp_dist
                    # train_predict_score[train_predict_score<0.312]=100
                    # train_predict_score[train_predict_score>=0.312] =0
                    #  predict_in=np.zeros((batch_size*trace_length,N_station+1))
                 # predict_in[:,:-1]=train_predict_score;
                     # print('LINUCB predict time:', time.time() - t1)
                     #get targetQ
-                    var = np.vstack(trainBatch[:, 3])
-                    agent.update_target_net()
-                    Q_input_dict[agent.scalarInput] = var
-                    Q_input_dict[agent.trainLength] = trace_length
-                    Q_input_dict[agent.batch_size] = batch_size
                     t1=time.time()
                     for station in range(N_station):
+                        Q_input_dict={}
+                        Q_input_dict[agent.trainLength] = trace_length
+                        Q_input_dict[agent.batch_size] = batch_size
+                        trainBatch = exp_replay.sample(batch_size, trace_length)
+                        # print('LINUCB update time:',time.time()-t1)
+                        train_predict_score = linucb_agent.return_upper_bound_batch(trainBatch[:, 6])
+                        train_predict_score = train_predict_score * exp_dist
+                        var = np.vstack(trainBatch[:, 3])
+                        Q_input_dict[agent.scalarInput] = var
                         tr, t_action = agent.train_prepare(trainBatch, station)
                         tp=train_predict_score/distance[station,:]
                         af=tp<e_threshold
@@ -283,26 +283,21 @@ with tf.Session(config=config1) as sess:
                         tp[bf]=0
                         tp[:,station]=0;
                         Q_input_dict[agent.predict_score[station]] = tp
-
                         Q_input_dict[agent.rewards[station]] = tr
-
-                    targetz = sess.run(Q1_in, feed_dict=Q_input_dict)
-
-                    # print('targetz update time:',time.time()-t1)
-                    #train
-
-                    t1=time.time()
-                    var=np.vstack(trainBatch[:, 0])
-                    Q_train_dict[agent.scalarInput] = var
-                    Q_train_dict[agent.trainLength] = trace_length
-                    Q_train_dict[agent.batch_size] = batch_size
-                    for station in range(N_station):
+                        targetz = sess.run(Q1_in[station], feed_dict=Q_input_dict)
+                        #train input
+                        var = np.vstack(trainBatch[:, 0])
+                        Q_train_dict={}
+                        Q_train_dict[agent.trainLength] = trace_length
+                        Q_train_dict[agent.batch_size] = batch_size
+                        Q_train_dict[agent.scalarInput] = var
+                        Q_train_dict[agent.targetQ[station]] = targetz
                         tr,t_action=agent.train_prepare(trainBatch, station)
                         Q_train_dict[agent.rewards[station]]= tr
                         Q_train_dict[agent.actions[station]]= t_action
-                        Q_train_dict[agent.targetQ[station]]= targetz[station]
-                    #train now
-                    sess.run(Q_train,feed_dict=Q_train_dict)
+                        sess.run(Q_train[station], feed_dict=Q_train_dict)
+
+
 
                     # print('train time:', time.time() - t1)
                     # print('Sequential Train time:', time.time()-t1)

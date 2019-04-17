@@ -268,7 +268,6 @@ with tf.Session(config=config1) as sess:
                     # print('LINUCB predict time:', time.time() - t1)
                     #get targetQ
                     var = np.vstack(trainBatch[:, 3])
-                    agent.update_target_net()
                     Q_input_dict[agent.scalarInput] = var
                     Q_input_dict[agent.trainLength] = trace_length
                     Q_input_dict[agent.batch_size] = batch_size

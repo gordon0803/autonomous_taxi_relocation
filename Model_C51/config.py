@@ -5,7 +5,7 @@ import pickle
 TRAIN_CONFIG = {
     'batch_size':32,
     'trace_length': 10,
-    'update_freq': 50,
+    'update_freq': 30,
     'lstm_unit':256,
     'y': .99,
     'elimination_threshold':.8,
