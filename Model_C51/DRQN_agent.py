@@ -128,15 +128,15 @@ class drqn_agent_efficient():
             q2=tf.reduce_mean(tf.math.square(Qout),axis=-1)
             std=tf.math.sqrt(tf.subtract(q2,q))
             mean=tf.reduce_mean(Qout,axis=-1)
-            median=tf.contrib.distributions.percentile(Qout, 68.0,axis=-1)
+            median=tf.contrib.distributions.percentile(Qout, 80.0,axis=-1)
             station_vec=tf.concat([tf.ones(i),tf.zeros(1),tf.ones(self.N_station-i-1)],axis=0)
             station_score=tf.multiply(self.predict_score[i],station_vec)  #mark self as 0
             self.station_score.append(station_score)
 
             #predict based on the 95% confidence interval
-            # predict = tf.argmax(tf.subtract(tf.add(mean,tf.scalar_mul(self.conf,std)),self.station_score[i]), 1, name=myScope + '_prediction')
+            #predict = tf.argmax(tf.subtract(tf.add(mean,tf.scalar_mul(self.conf,std)),self.station_score[i]), 1, name=myScope + '_prediction')
 
-            predict=tf.argmax(tf.subtract(mean,self.station_score[i]), 1, name=myScope + '_prediction')
+            predict=tf.argmax(tf.subtract(median,self.station_score[i]), 1, name=myScope + '_prediction')
             self.mainPredict.append(predict)
 
     def build_target(self):
@@ -195,13 +195,13 @@ class drqn_agent_efficient():
             myScope = 'DRQN_main_'+str(i)
             # Then combine them together to get our final Q-values.
             # Below we obtain the loss by taking the sum of squares difference between the target and prediction Q values.
-            # main_q =tf.math.square(tf.reduce_mean(self.mainQout[i], axis=-1))
-            # main_q2=tf.reduce_mean(tf.math.square(self.mainQout[i]),axis=-1)
-            mean=tf.reduce_mean(self.mainQout[i],axis=-1)
-            median = tf.contrib.distributions.percentile(self.mainQout[i], 68.0, axis=-1)
-            main_q = tf.subtract(mean, self.station_score[i])
-            # std=tf.math.sqrt(tf.math.subtract(main_q2,main_q))
-            # main_q = tf.subtract(tf.add(mean,tf.scalar_mul(self.conf,std)), self.station_score[i])
+            #main_q =tf.math.square(tf.reduce_mean(self.mainQout[i], axis=-1))
+            #main_q2=tf.reduce_mean(tf.math.square(self.mainQout[i]),axis=-1)
+            #mean=tf.reduce_mean(self.mainQout[i],axis=-1)
+            median = tf.contrib.distributions.percentile(self.mainQout[i], 80.0, axis=-1)
+            main_q = tf.subtract(median, self.station_score[i])
+            #std=tf.math.sqrt(tf.math.subtract(main_q2,main_q))
+            #main_q = tf.subtract(tf.add(mean,tf.scalar_mul(self.conf,std)), self.station_score[i])
             main_act = tf.argmax(main_q, axis=-1)
 
             # Return the evaluation from target network

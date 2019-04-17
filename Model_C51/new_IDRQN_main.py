@@ -106,8 +106,8 @@ with tf.Session(config=config1) as sess:
     agent=DRQN_agent.drqn_agent_efficient(N_station, h_size, lstm_units,tau, sess, batch_size, trace_length,is_gpu=use_gpu)
     agent.drqn_build()
 
-    exp_replay=network.experience_buffer(2000) #a single buffer holds everything
-    bandit_buffer=network.bandit_buffer(1000)
+    exp_replay=network.experience_buffer(3000) #a single buffer holds everything
+    bandit_buffer=network.bandit_buffer(2000)
     global_init = tf.global_variables_initializer()
     # writer = tf.summary.FileWriter('./graphs', sess.graph)
     # writer.close()1
