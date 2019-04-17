@@ -60,7 +60,7 @@ silent = config.TRAIN_CONFIG['silent']  # do not print training time
 prioritized = config.TRAIN_CONFIG['prioritized']
 
 
-tau = 0.05
+tau = 0.01
 
 # --------------Simulation initialization
 sys_tracker = system_tracker()
@@ -104,7 +104,7 @@ with tf.Session(config=config1) as sess:
     agent=DRQN_agent.drqn_agent_efficient(N_station, h_size, lstm_units,tau, sess, batch_size, trace_length,is_gpu=use_gpu)
     agent.drqn_build()
 
-    exp_replay=network.experience_buffer(5000) #a single buffer holds everything
+    exp_replay=network.experience_buffer(10000) #a single buffer holds everything
     bandit_buffer=network.bandit_buffer(5000)
     global_init = tf.global_variables_initializer()
     # writer = tf.summary.FileWriter('./graphs', sess.graph)
@@ -156,6 +156,7 @@ with tf.Session(config=config1) as sess:
         while j < max_epLength:
             tall=time.time()
             j += 1
+            agent.update_conf(1,1.5*anneling_steps)
 
             # for all the stations, act greedily
             # Choose an action by greedily (with e chance of random action) from the Q-network
@@ -216,7 +217,7 @@ with tf.Session(config=config1) as sess:
             for station in range(N_station):
                 if a[station] == -1:
                     #newr[station]=0
-                    a[station] = N_station
+                    a[station] = station
 
             v1=np.reshape(np.array([s, a, newr, s1,feature,score,featurep]), [1,7])
             global_epi_buffer.append(v1)
@@ -237,11 +238,12 @@ with tf.Session(config=config1) as sess:
             #     buffer_count-=trace_length
 
             buffer_count+=1
-            if buffer_count>=trace_length:
-                bufferArray=np.array(global_epi_buffer)
-                exp_replay.add(bufferArray[:trace_length])
-                global_epi_buffer=[]
-                buffer_count=0
+            if buffer_count>=2*trace_length:
+                for it in range(trace_length):
+                    bufferArray=np.array(global_epi_buffer)
+                    exp_replay.add(bufferArray[it:it+trace_length])
+                global_epi_buffer=global_epi_buffer[trace_length:]
+                buffer_count-=trace_length
 
             if total_steps % (500) == 0 and i>4:
                 linubc_train = bandit_buffer.sample(batch_size * 20)
@@ -327,7 +329,7 @@ with tf.Session(config=config1) as sess:
         sys_tracker.record_time(env)
         print('Episode:', i, ', totalreward:', rAll, ', old reward:',rAll_unshape,', total serve:', total_serve, ', total leave:', total_leave, ', total_cpu_time:',time.time()-tinit,
               ', terminal_taxi_distribution:', [len(v) for v in env.taxi_in_q], ', terminal_passenger:',
-              [len(v) for v in env.passenger_qtime], e)
+              [len(v) for v in env.passenger_qtime], e,agent.conf)
         reward_out.write(str(i) + ',' + str(rAll) + '\n')
 
 

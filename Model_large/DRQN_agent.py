@@ -31,6 +31,7 @@ class drqn_agent_efficient():
         self.N=100; #number of quantiles
         self.k=1; #huber loss
         self.gamma=0.99**1#discount factor
+        self.conf=1
 
         #risk averse
         # risk seeking behavior
@@ -129,13 +130,16 @@ class drqn_agent_efficient():
             self.mainQout.append(Qout)
 
 
-            q=tf.reduce_sum(tf.sort(Qout,axis=-1)*self.quantile_mask,axis=-1)
+            q=tf.math.square(tf.reduce_mean(Qout,axis=-1))
+            q2=tf.reduce_mean(tf.math.square(Qout),axis=-1)
+            std=tf.math.sqrt(tf.subtract(q2,q))
+            mean=tf.reduce_mean(Qout,axis=-1)
             station_vec=tf.concat([tf.ones(i),tf.zeros(1),tf.ones(self.N_station-i-1)],axis=0)
             station_score=tf.multiply(self.predict_score[i],station_vec)  #mark self as 0
             self.station_score.append(station_score)
 
             #predict based on the 95% confidence interval
-            predict = tf.argmax(tf.subtract(q,self.station_score[i]), 1, name=myScope + '_prediction')
+            predict = tf.argmax(tf.subtract(tf.add(mean,tf.scalar_mul(self.conf,std)),self.station_score[i]), 1, name=myScope + '_prediction')
             self.mainPredict.append(predict)
 
     def build_target(self):
@@ -195,9 +199,13 @@ class drqn_agent_efficient():
             myScope = 'DRQN_main_'+str(i)
             # Then combine them together to get our final Q-values.
             # Below we obtain the loss by taking the sum of squares difference between the target and prediction Q values.
-            main_q = tf.reduce_sum(tf.sort(self.mainQout[i],axis=-1)*self.quantile_mask, axis=-1)
-            main_q = tf.subtract(main_q, self.station_score[i])
+            main_q =tf.math.square(tf.reduce_mean(self.mainQout[i], axis=-1))
+            main_q2=tf.reduce_mean(tf.math.square(self.mainQout[i]),axis=-1)
+            mean=tf.reduce_mean(self.mainQout[i],axis=-1)
+            std=tf.math.sqrt(tf.math.subtract(main_q2,main_q))
+            main_q = tf.subtract(tf.add(mean,tf.scalar_mul(self.conf,std)), self.station_score[i])
             main_act = tf.argmax(main_q, axis=-1)
+
             # Return the evaluation from target network
             target_mask = tf.one_hot(main_act, self.N_station, dtype=tf.float32)  # out: [None, n_actions]
             target_mask = tf.expand_dims(target_mask, axis=-1)  # out: [None, n_actions, 1]
@@ -272,7 +280,7 @@ class drqn_agent_efficient():
         # Q1 and Q2 in the shape of [batch*length, N_station, N]
         reward=np.array([r[station] for r in trainBatch[:,2]])
         action=np.array([a[station] for a in trainBatch[:,1]])
-        reward[action==self.N_station]=0;
+        # reward[action==self.N_station]=0;
         return reward,action
 
 
@@ -377,3 +385,8 @@ class drqn_agent_efficient():
         return loss
 
 
+    def update_conf(self,var,iteration):
+        stepDrop = (var) / (0.5*iteration);
+        self.conf-=stepDrop
+        if self.conf<-var:
+            self.conf=-var
