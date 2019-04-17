@@ -387,10 +387,10 @@ class drqn_agent_efficient():
         self.quantile_mask = np.diff(self.quantile_mask) # rescale the distribution to favor risk neutral or risk-averse behavior
 
     def update_conf(self,var,iteration):
-        stepDrop = (var) / iteration;
+        stepDrop = (var) / (0.5*iteration);
         self.conf-=stepDrop
-        if self.conf<0:
-            self.eta=0
+        if self.conf<-var:
+            self.conf=-var
 
 
 
