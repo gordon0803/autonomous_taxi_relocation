@@ -1,0 +1,1 @@
+q = tf.reduce_mean(tf.sort(Qout, axis=-1) * self.quantile_mask, axis=-1)

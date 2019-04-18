@@ -5,6 +5,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 use_gpu = 1
 import os
 import config
+import multiprocessing as mp
 import taxi_env as te
 import taxi_util as tu
 import time
@@ -89,6 +90,10 @@ if not os.path.exists(path):
     os.makedirs(path)
 
 linucb_agent=bandit.linucb_agnet(N_station,N_station*4)
+exp_replay = network.experience_buffer(3000)  # a single buffer holds everything
+bandit_buffer = network.bandit_buffer(2000)
+
+
 # # this step loads the model from the model that has been saved
 # if load_model == True:
 #     print('Loading Model...')
@@ -106,8 +111,7 @@ with tf.Session(config=config1) as sess:
     agent=DRQN_agent.drqn_agent_efficient(N_station, h_size, lstm_units,tau, sess, batch_size, trace_length,is_gpu=use_gpu)
     agent.drqn_build()
 
-    exp_replay=network.experience_buffer(3000) #a single buffer holds everything
-    bandit_buffer=network.bandit_buffer(2000)
+
     global_init = tf.global_variables_initializer()
     # writer = tf.summary.FileWriter('./graphs', sess.graph)
     # writer.close()1
@@ -129,6 +133,11 @@ with tf.Session(config=config1) as sess:
         Q1_in.append(agent.targetZ[station])
         Q2_in.append(agent.targetQout[station])
         Q_train.append(agent.updateModel[station])
+
+    def parse_input(j):
+        station=j
+
+
 
 
 
@@ -216,10 +225,6 @@ with tf.Session(config=config1) as sess:
             # episode buffer
             # we don't store the initial 200 steps of the simulation, as warm up periods
             newr=r*np.ones((N_station))
-            for station in range(N_station):
-                if a[station] == -1:
-                    #newr[station]=0
-                    a[station] = station
 
             v1=np.reshape(np.array([s, a, newr, s1,feature,score,featurep]), [1,7])
             global_epi_buffer.append(v1)
@@ -265,40 +270,37 @@ with tf.Session(config=config1) as sess:
                     # print('LINUCB predict time:', time.time() - t1)
                     #get targetQ
                     t1=time.time()
+                    Q_train_dict[agent.trainLength] = trace_length
+                    Q_train_dict[agent.batch_size] = batch_size
+                    Q_input_dict[agent.trainLength] = trace_length
+                    Q_input_dict[agent.batch_size] = batch_size
+
                     for station in range(N_station):
-                        Q_input_dict={}
-                        Q_input_dict[agent.trainLength] = trace_length
-                        Q_input_dict[agent.batch_size] = batch_size
                         trainBatch = exp_replay.sample(batch_size, trace_length)
                         # print('LINUCB update time:',time.time()-t1)
                         train_predict_score = linucb_agent.return_upper_bound_batch(trainBatch[:, 6])
                         train_predict_score = train_predict_score * exp_dist
-                        var = np.vstack(trainBatch[:, 3])
-                        Q_input_dict[agent.scalarInput] = var
                         tr, t_action = agent.train_prepare(trainBatch, station)
-                        tp=train_predict_score/distance[station,:]
-                        af=tp<e_threshold
-                        bf=tp>=e_threshold
-                        tp[af]=100
-                        tp[bf]=0
-                        tp[:,station]=0;
+                        tp = train_predict_score / distance[station, :]
+                        af = tp < e_threshold
+                        bf = tp >= e_threshold
+                        tp[af] = 100
+                        tp[bf] = 0
+                        tp[:, station] = 0
+                        # train input
+                        Q_input_dict[agent.scalarInput[station]] = np.vstack(trainBatch[:, 3])
                         Q_input_dict[agent.predict_score[station]] = tp
                         Q_input_dict[agent.rewards[station]] = tr
-                        targetz = sess.run(Q1_in[station], feed_dict=Q_input_dict)
-                        #train input
-                        var = np.vstack(trainBatch[:, 0])
-                        Q_train_dict={}
-                        Q_train_dict[agent.trainLength] = trace_length
-                        Q_train_dict[agent.batch_size] = batch_size
-                        Q_train_dict[agent.scalarInput] = var
-                        Q_train_dict[agent.targetQ[station]] = targetz
-                        tr,t_action=agent.train_prepare(trainBatch, station)
-                        Q_train_dict[agent.rewards[station]]= tr
-                        Q_train_dict[agent.actions[station]]= t_action
-                        sess.run(Q_train[station], feed_dict=Q_train_dict)
+                        Q_train_dict[agent.scalarInput[station]] = np.vstack(trainBatch[:, 0])
+                        Q_train_dict[agent.rewards[station]] = tr
+                        Q_train_dict[agent.actions[station]] = t_action
 
+                    targetz = sess.run(Q1_in, feed_dict=Q_input_dict)
 
+                    for station in range(N_station):
+                        Q_train_dict[agent.targetQ[station]] = targetz[station]
 
+                    sess.run(Q_train, feed_dict=Q_train_dict)
                     # print('train time:', time.time() - t1)
                     # print('Sequential Train time:', time.time()-t1)
 
@@ -344,3 +346,6 @@ outf.close()
 reward_out.close()
 sys_tracker.save('IDRQN')
 sys_tracker.playback(-1)
+
+
+

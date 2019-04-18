@@ -77,7 +77,6 @@ class linucb_agnet():
         return np.array(prob)
 
     def return_upper_bound_batch(self,feature):
-        t1=time.time()
         prob=[self.return_upper_bound(feature[i]) for i in range(len(feature))]
 
         return np.array(prob)
