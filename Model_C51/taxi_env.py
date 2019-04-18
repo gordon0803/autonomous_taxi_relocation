@@ -42,13 +42,14 @@ class taxi_simulator():
     def __init__(self, arrival_rate, OD_mat, dist_mat, time_mat, taxi_input):
         # lamba is a vector of size 1 by N
         # OD_mat,dist_mat, and time_mat are list of list of size N by N
-
+        self.timer=0 #current step
         # number of taxi stands
         self.N = len(arrival_rate)
         # list of station IDs from 0 to N-1
         self.station_list = np.array([i for i in range(self.N)])
         # passenger arrival rate
-        self.arrival_rate = arrival_rate
+        self.arrival_input = arrival_rate
+
         # OD ratio matrix of all taxi stands
         self.OD_split=OD_mat
 
@@ -135,6 +136,8 @@ class taxi_simulator():
         # step 5: serve passengers
         self.passenger_serve()
 
+        self.timer+=1
+
         return self.served_pass,self.left_pass
 
     # 2: all taxi traveling
@@ -208,7 +211,7 @@ class taxi_simulator():
                 self.leaved_passengers_waiting_time[i]+=left_waiting_time
 
             # new passengers
-            n_pass_arrive = np.random.poisson(self.arrival_rate[i])
+            n_pass_arrive = self.arrival_rate[i][self.timer]
             destination = np.random.choice(self.station_list, n_pass_arrive, self.OD_split[i]).tolist()
             # add passengers to the queue
             # new passengers with 0 waiting time
@@ -299,6 +302,19 @@ class taxi_simulator():
         self.served_passengers_waiting_time = np.zeros(self.N)
         self.leaved_passengers = np.zeros(self.N)
         self.leaved_passengers_waiting_time = np.zeros(self.N)
+
+        self.timer=0;
+
+        #pregeneration demand
+        self.arrival_rate = []
+        max_time_step = 1000;
+        steps = max_time_step // (len(self.arrival_input[0]) - 1)
+        x_base = [steps * i for i in range(len(self.arrival_input[0]))]
+        x_project = [i for i in range(max_time_step)]
+        for i in range(self.N):
+            arrive = np.interp(x_project, x_base, self.arrival_input[i])
+            arrive = np.random.poisson(arrive).tolist()
+            self.arrival_rate.append(arrive)
 
 
     def get_state(self):

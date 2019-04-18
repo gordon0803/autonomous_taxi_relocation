@@ -59,6 +59,10 @@ pre_train_steps = max_epLength * 10  # How many steps of random actions before t
 softmax_action = config.TRAIN_CONFIG['softmax_action']
 silent = config.TRAIN_CONFIG['silent']  # do not print training time
 prioritized = config.TRAIN_CONFIG['prioritized']
+rng_seed=config.TRAIN_CONFIG['random_seed']
+
+#set rng seed
+np.random.seed(rng_seed)
 
 
 tau = 0.01
@@ -133,13 +137,6 @@ with tf.Session(config=config1) as sess:
         Q1_in.append(agent.targetZ[station])
         Q2_in.append(agent.targetQout[station])
         Q_train.append(agent.updateModel[station])
-
-    def parse_input(j):
-        station=j
-
-
-
-
 
     for i in range(num_episodes):
         global_epi_buffer=[]

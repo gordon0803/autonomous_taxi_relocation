@@ -8,6 +8,9 @@ import tensorflow as tf
 import network
 import time
 import tensorflow.contrib.slim as slim
+import config
+
+
 
 
 
@@ -36,7 +39,7 @@ class drqn_agent_efficient():
         #risk averse
         # risk seeking behavior
         tmask = np.linspace(0, 1, num=self.N + 1)
-        self.eta = 1
+        self.eta = config.NET_CONFIG['eta']
         self.quantile_mask = tmask ** self.eta / (tmask ** self.eta + (1 - tmask) ** self.eta) ** (
                     1 / self.eta)
         self.quantile_mask = np.diff(

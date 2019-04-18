@@ -2,6 +2,7 @@ import numpy as np
 import json
 import math
 import pickle
+import config
 import taxi_util
 import time
 
@@ -16,8 +17,15 @@ for i in range(N_station):
         distance[i, j] = 2 * math.ceil(abs(j - i) / 2);
 
 travel_time = distance
-arrival_rate = [(i + 1) / 6.0 for i in range(N_station)]
-arrival_rate=[0.1,0.4,0.7,1,1.3,0.1,0.4,0.7,1,1.3]
+#arrival_rate = [(i + 1) / 6.0 for i in range(N_station)]
+#arrival_rate=[0.1,0.4,0.7,1,1.3,0.1,0.4,0.7,1,1.3]
+
+
+#temporally varying passenger demand
+arrival_rate=[[0.1,0.3,0.2,0.15],[0.4,0.6,0.8,0.4],[0.7,1.1,1.3,1.1],[1,1.3,0.9,1.3],[1.3,1.6,1.3,1.5],[0.1,0.3,0.2,0.15],[0.4,0.6,0.8,0.4],[0.7,1.1,1.3,1.1],[1,1.3,0.9,1.3],[1.3,1.6,1.3,1.5]]
+#parse arriva rate into N_stationX timesteps list with random number generaterd before hands
+rng_seed=config.TRAIN_CONFIG['random_seed'];
+
 
 OD_mat = []
 for i in range(N_station):
@@ -35,14 +43,6 @@ for i in range(N_station):
     exp_dist.append(v/sum(OD_mat[i]))
 
 print(exp_dist)
-# calculate taxi_arrival_rate at each station
-incoming_taxi = np.zeros(N_station)
-for i in range(N_station):
-    temp_in = 0;
-    for j in range(N_station):
-        rate = np.array(OD_mat[j]) / sum(OD_mat[j])
-        temp_in += arrival_rate[j] * rate[i]
-    incoming_taxi[i] = temp_in
 
 taxi_input = 10
 
@@ -54,9 +54,6 @@ simulation_input['OD_mat'] = OD_mat
 simulation_input['arrival_rate'] = arrival_rate
 simulation_input['exp_dist']=exp_dist
 
-t1=time.time()
-#relo_graph = taxi_util.RGraph(distance, incoming_taxi, arrival_rate)
-print('generate network in:',time.time()-t1)
 
 
 with open('simulation_input.dat', 'wb') as fp:
