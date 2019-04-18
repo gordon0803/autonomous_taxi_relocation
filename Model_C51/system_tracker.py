@@ -44,7 +44,7 @@ class system_tracker():
 		self.total_taxi = N_station*taxi_input
 		print('total_taxi:', taxi_input)
 		if(mode == 'Endpoint'):
-			self.record_episode = [0, num_episode]
+			self.record_episode = list(range(10))+list(range(num_episode-10,num_episode))
 		else: 
 			self.record_episode = list(range(num_episode))
 
@@ -61,12 +61,12 @@ class system_tracker():
 			passenger_gap = np.diag(np.reshape(s[range(0,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station)))
 			taxi_in_travel = np.reshape(s[range(1,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station))
 			taxi_in_relocation = np.reshape(s[range(2,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station))
-			taxi_in_charge = np.diag(np.reshape(s[range(3,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station)))
+			taxi_in_charge = np.diag(np.reshape(s[range(4,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station)))
 			action = [int(x) for x in a]
 			oneframeinfo = {
 			"taxi_in_travel": taxi_in_travel.sum()*self.total_taxi,
 			"taxi_in_relocation": taxi_in_relocation.sum()*self.total_taxi,
-			"passenger_gap":(passenger_gap*self.total_taxi).tolist(),
+			"passenger_gap":(passenger_gap*50).tolist(),
 			"taxi_in_charge":(taxi_in_charge*self.total_taxi).tolist(),
 			"action": action
 			}
@@ -163,7 +163,7 @@ class system_tracker():
 		served_passengers = np.array(dataset[-1]['served_passengers'])
 		average_waiting_time = np.array(dataset[-1]['served_passengers_waiting_time'])/(served_passengers*1.0)
 		leaved_passengers = np.array(dataset[-1]['leaved_passengers'])
-		left_average_waiting_time = np.array(dataset[-1]['leaved_passengers_waiting_time'])/(leaved_passengers*1.0)
+		left_average_waiting_time = np.array(dataset[-1]['leaved_passengers_waiting_time'])/(leaved_passengers*1.0+1e-3)
 		return avg, std, counts, served_passengers,average_waiting_time,leaved_passengers,left_average_waiting_time
 
 
