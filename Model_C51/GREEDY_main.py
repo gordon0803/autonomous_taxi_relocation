@@ -1,7 +1,6 @@
-#Zengxiang Lei 2019-02-09
+#Zengxiang Lei 2019-03-12
 
-#Main file for greedy relocation
-
+#Greedy relocation
 
 import os
 from network import *
@@ -33,6 +32,10 @@ arrival_rate=simulation_input['arrival_rate']
 taxi_input=simulation_input['taxi_input']
 print(arrival_rate)
 
+loc_neighbor = dict()
+for i in range(N_station):
+    one_dist=distance[i,:]
+    loc_neighbor[i] = list(np.argsort(one_dist))
 
 env=te.taxi_simulator(arrival_rate,OD_mat,distance,travel_time,taxi_input)
 env.reset()
@@ -44,10 +47,12 @@ warmup_time=config.TRAIN_CONFIG['warmup_time'];
 max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength*50 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
-softmax_action=False
+greedy_option = "inventory"
 
+# Initialize the system tracker
 sys_tracker = system_tracker()
-sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station, num_episodes, 
+sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input*N_station), N_station, num_episodes, max_epLength)
+
 #------------------Train the network-----------------------
 
 
@@ -70,7 +75,7 @@ stand_agent = []
 # targetOps=[]
 
 for station in range(N_station):
-	stand_agent.append(GREEDY_agent.greedy_agent(str(station), N_station))
+	stand_agent.append(GREEDY_agent.greedy_agent(str(station), N_station, arrival_rate, loc_neighbor[station],int(taxi_input*N_station)))
 
 
 for i in range(num_episodes):
@@ -81,7 +86,7 @@ for i in range(num_episodes):
     # Reset timestep of system tracker
     sys_tracker.new_episode()
     # return the current state of the system
-    sP, tempr,temprp,f = env.get_state()
+    sP, tempr, featurep,score,tr2 = env.get_state()
     # process the state into a list
     s = network.processState(sP, N_station)
 
@@ -97,17 +102,21 @@ for i in range(num_episodes):
        a=[-1]*N_station
        # for all the stations, act greedily
        # Choose an action by greedily (with gap) for this time
-       if softmax_action==True:  #use softmax
+       if greedy_option=="softmax":  #use softmax
            for station in range(N_station):
                prob=stand_agent[station].predict_softmax(s)
                a1=np.random.choice(list(range(N_station)),1,p=prob)[0]
-               a[station] = a1  # action performed by DRQN
+               a[station] = a1  # action performed by rational
 
+       elif greedy_option=="inventory":  #use softmax
+           for station in range(N_station):
+               a1=stand_agent[station].predict_inventory(s)
+               a[station] = a1  # action performed by rational
 
        else: #use max gap
            for station in range(N_station):
                a1 = stand_agent[station].predict(s)
-               a[station]=a1 #action performed by DRQN
+               a[station]=a1 #action performed by greedy
                if not env.taxi_in_q[station]:
                    a[station]=station
 
@@ -120,7 +129,7 @@ for i in range(num_episodes):
        total_leave+=lfp
 
        # get state and reward
-       s1P, r,rp,ff= env.get_state()
+       s1P, r, featurep,score,r2= env.get_state()
 
        s1 = network.processState(s1P, N_station)
 
@@ -143,6 +152,5 @@ for i in range(num_episodes):
     reward_out.write(str(j)+','+str(rAll)+'\n')
 reward_out.close()
 
-sys_tracker.save('greedy',env)
+sys_tracker.save(greedy_option)
 sys_tracker.playback(-1)
-

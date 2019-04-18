@@ -33,6 +33,10 @@ arrival_rate=simulation_input['arrival_rate']
 taxi_input=simulation_input['taxi_input']
 print(arrival_rate)
 
+loc_neighbor = dict()
+for i in range(N_station):
+    one_dist=distance[i,:]
+    loc_neighbor[i] = list(np.argsort(one_dist))
 
 env=te.taxi_simulator(arrival_rate,OD_mat,distance,travel_time,taxi_input)
 env.reset()
@@ -44,10 +48,12 @@ warmup_time=config.TRAIN_CONFIG['warmup_time'];
 max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength*50 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
-softmax_action=False
+greedy_option = "inventory"
+
 
 sys_tracker = system_tracker()
-sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station,num_episodes, max_epLength)
+sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input*N_station), N_station, num_episodes, max_epLength)
+
 #------------------Train the network-----------------------
 
 
@@ -70,7 +76,7 @@ stand_agent = []
 # targetOps=[]
 
 for station in range(N_station):
-	stand_agent.append(GREEDY_agent.greedy_agent(str(station), N_station))
+	stand_agent.append(GREEDY_agent.greedy_agent(str(station), N_station, arrival_rate, loc_neighbor[station],int(taxi_input*N_station)))
 
 
 for i in range(num_episodes):
@@ -143,6 +149,6 @@ for i in range(num_episodes):
     reward_out.write(str(j)+','+str(rAll)+'\n')
 reward_out.close()
 
-sys_tracker.save('greedy')
+sys_tracker.save(greedy_option)
 sys_tracker.playback(-1)
 

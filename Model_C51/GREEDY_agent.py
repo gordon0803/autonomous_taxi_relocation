@@ -9,12 +9,17 @@ import network
 import time
 
 class greedy_agent():
-    def __init__(self,name,N_station):
+    def __init__(self,name,N_station,threshold,neighbor_loc,total_taxi):
         #config is the parameter setting
         #ckpt_path is the path for load models
         self.name=name
         self.N_station = N_station
         self.N_station_pair = N_station*N_station
+        self.threshold =threshold
+        self.neighbor_loc = neighbor_loc[1:]
+        self.total_taxi = total_taxi
+        self.max_passenger =50
+
 
     def predict(self,s):
         #make the prediction
@@ -27,3 +32,16 @@ class greedy_agent():
         utility = np.exp(np.array(passenger_gap))
         prob = utility / sum(utility)
         return prob
+
+    def predict_inventory(self,s):
+        inventory_gap = np.diag(np.reshape(s[range(3,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station)))*self.total_taxi-\
+                        np.diag(np.reshape(s[range(0,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station)))*self.max_passenger
+        action = -1
+        #print(inventory_gap)
+        if (inventory_gap[int(self.name)])>=self.threshold[int(self.name)]:
+            # to the closest shortage place
+            for neighbor_loc in self.neighbor_loc:
+                if inventory_gap[neighbor_loc]<self.threshold[neighbor_loc]:
+                    action = neighbor_loc
+                    break
+        return action
