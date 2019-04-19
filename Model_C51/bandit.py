@@ -39,7 +39,7 @@ class linucb_agnet():
     def update(self,features,actions,rewards):
         #update all observed arms
         #reset parameters
-        gamma=1; #decay parameter
+        gamma=.9; #decay parameter
         for i in range(self.n_action):
             self.Da[i]=gamma*self.Da[i]
             self.ba[i]=gamma*self.ba[i]
@@ -56,19 +56,22 @@ class linucb_agnet():
             self.AaI[action]=np.linalg.inv(np.identity(self.d)+self.Da[action]) #inverse
             self.theta[action]=np.dot(self.AaI[action],self.ba[action])
 
-        self.round+=len(features) #number of rounds the bandit has been played
-        self.alpha=np.sqrt(0.5*np.log(2*self.round*self.n_action*10))
+        self.round+=len(rewards) #number of rounds the bandit has been played
+        # self.alpha=0.01
+        # self.alpha=np.sqrt(0.5*np.log(2*self.round*self.n_action*10))
+        self.alpha=0.01
+        #print(self.alpha,self.round)
 
         #done update
 
     def return_upper_bound(self,feature):
         # prob=[]
-        s=np.array(feature)
+       # s=np.array(feature)
         #
         # for i in range(self.n_action):
         #     score=np.dot(s,self.theta[i])+self.alpha*np.sqrt(np.dot(np.dot(s,self.AaI[i]),s))
         #     prob.append(score)
-
+        s=feature
         # prob=[np.dot(s,self.theta[i])+self.alpha*np.sqrt(np.dot(np.dot(s,self.AaI[i]),s)) for i in range(self.n_action)]
 
         prob=np.fromiter((np.dot(s,self.theta[i])+self.alpha*np.sqrt(np.dot(np.dot(s,self.AaI[i]),s)) for i in range(self.n_action)), float)

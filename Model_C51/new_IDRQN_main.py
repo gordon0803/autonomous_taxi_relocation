@@ -5,7 +5,7 @@ warnings.filterwarnings("ignore", category=RuntimeWarning)
 use_gpu = 1
 import os
 import config
-import multiprocessing as mp
+from multiprocessing import Pool
 import taxi_env as te
 import taxi_util as tu
 import time
@@ -97,7 +97,6 @@ linucb_agent=bandit.linucb_agnet(N_station,N_station*4)
 exp_replay = network.experience_buffer(3000)  # a single buffer holds everything
 bandit_buffer = network.bandit_buffer(2000)
 
-
 # # this step loads the model from the model that has been saved
 # if load_model == True:
 #     print('Loading Model...')
@@ -159,12 +158,13 @@ with tf.Session(config=config1) as sess:
 
         buffer_count=0;
         # We train one station in one single episode, and hold it unchanged for other stations, and we keep rotating.
-
         tinit=time.time()
         while j < max_epLength:
             # agent.update_conf(1,1.5*anneling_steps)
             tall=time.time()
             j += 1
+
+
 
             # for all the stations, act greedily
             # Choose an action by greedily (with e chance of random action) from the Q-network
@@ -272,23 +272,24 @@ with tf.Session(config=config1) as sess:
                     Q_input_dict[agent.trainLength] = trace_length
                     Q_input_dict[agent.batch_size] = batch_size
 
+                    #the set of batches created
+                    trainBatch_list=[exp_replay.sample(batch_size, trace_length)  for st in range(N_station)]
+                    #generate the linucb score for each batch
+                    train_predict_score_list=[linucb_agent.return_upper_bound_batch(trainBatch_list[st][:,6])*exp_dist for st in range(N_station)]
+
                     for station in range(N_station):
-                        trainBatch = exp_replay.sample(batch_size, trace_length)
-                        # print('LINUCB update time:',time.time()-t1)
-                        train_predict_score = linucb_agent.return_upper_bound_batch(trainBatch[:, 6])
-                        train_predict_score = train_predict_score * exp_dist
-                        tr, t_action = agent.train_prepare(trainBatch, station)
-                        tp = train_predict_score / distance[station, :]
+                        tr, t_action = agent.train_prepare(trainBatch_list[station], station)
+                        tp = train_predict_score_list[station] / distance[station, :]
                         af = tp < e_threshold
                         bf = tp >= e_threshold
                         tp[af] = 100
                         tp[bf] = 0
                         tp[:, station] = 0
                         # train input
-                        Q_input_dict[agent.scalarInput[station]] = np.vstack(trainBatch[:, 3])
+                        Q_input_dict[agent.scalarInput[station]] = np.vstack(trainBatch_list[station][:, 3])
                         Q_input_dict[agent.predict_score[station]] = tp
                         Q_input_dict[agent.rewards[station]] = tr
-                        Q_train_dict[agent.scalarInput[station]] = np.vstack(trainBatch[:, 0])
+                        Q_train_dict[agent.scalarInput[station]] = np.vstack(trainBatch_list[station][:, 0])
                         Q_train_dict[agent.rewards[station]] = tr
                         Q_train_dict[agent.actions[station]] = t_action
 
@@ -312,7 +313,7 @@ with tf.Session(config=config1) as sess:
             #preocess bandit buffer
         for epi in range(len(global_bandit_buffer)-2*trace_length):
                # print(global_bandit_buffer[i])
-            score=np.mean([global_bandit_buffer[epi+k][0][5] for k in range(2*trace_length)],axis=0)
+            score=np.mean([global_bandit_buffer[epi+k][0][5] for k in range(trace_length)],axis=0)
             record=global_bandit_buffer[epi]
             record[0][5]=score; #replay the score
             bandit_buffer.add(record)

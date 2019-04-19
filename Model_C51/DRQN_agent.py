@@ -9,6 +9,7 @@ import network
 import time
 import tensorflow.contrib.slim as slim
 import config
+from scipy.stats import norm
 
 
 
@@ -28,6 +29,8 @@ class drqn_agent_efficient():
         self.use_gpu=is_gpu;
         self.ckpt_path=ckpt_path;
 
+        self.count_single_act=0
+
 
 
         #QR params
@@ -40,10 +43,14 @@ class drqn_agent_efficient():
         # risk seeking behavior
         tmask = np.linspace(0, 1, num=self.N + 1)
         self.eta = config.NET_CONFIG['eta']
-        self.quantile_mask = tmask ** self.eta / (tmask ** self.eta + (1 - tmask) ** self.eta) ** (
-                    1 / self.eta)
-        self.quantile_mask = np.diff(
-            self.quantile_mask) # rescale the distribution to favor risk neutral or risk-averse behavior
+        # self.quantile_mask = tmask ** self.eta / (tmask ** self.eta + (1 - tmask) ** self.eta) ** (
+        #             1 / self.eta)
+        if config.NET_CONFIG['Risk_Distort']:
+            self.quantile_mask=norm.cdf(norm.ppf(tmask)-self.eta)
+        else:
+            self.quantile_mask=tmask
+
+        self.quantile_mask = np.diff(self.quantile_mask) # rescale the distribution to favor risk neutral or risk-averse behavior
 
 
         #risk seeking
@@ -149,14 +156,14 @@ class drqn_agent_efficient():
         mask = tf.concat([maskA, maskB], 1)
 
         self.mask = tf.reshape(mask, [-1])
-        self.trainer = tf.train.AdamOptimizer(learning_rate=0.0001, name='Adam_opt')
+        self.trainer = tf.train.AdamOptimizer(learning_rate=0.001, name='Adam_opt')
         for i in range(self.N_station):
             myScope = 'DRQN_main_'+str(i)
             # Then combine them together to get our final Q-values.
             # Below we obtain the loss by taking the sum of squares difference between the target and prediction Q values.
             #main_q =tf.math.square(tf.reduce_mean(self.mainQout[i], axis=-1))
             #main_q2=tf.reduce_mean(tf.math.square(self.mainQout[i]),axis=-1)
-            #mean=tf.reduce_mean(self.mainQout[i],axis=-1)
+            mean=tf.reduce_mean(self.mainQout[i],axis=-1)
             # median = tf.contrib.distributions.percentile(self.mainQout[i], 80.0, axis=-1)
             # main_q = tf.subtract(median, self.station_score[i])
             # #std=tf.math.sqrt(tf.math.subtract(main_q2,main_q))
@@ -220,7 +227,7 @@ class drqn_agent_efficient():
                                   name='_convlution_flattern')
             if self.use_gpu:
                 print('Using CudnnLSTM')
-                lstm = tf.contrib.cudnn_rnn.CudnnGRU(num_layers=1, num_units=self.lstm_units, name='_lstm')
+                lstm = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1, num_units=self.lstm_units, name='_lstm')
                 rnn, rnn_state = lstm(inputs=convFlat)
             else:
                 print('Using LSTMfused')
@@ -247,7 +254,7 @@ class drqn_agent_efficient():
                                   name='_convlution_flattern')
             if self.use_gpu:
                 print('Using CudnnLSTM')
-                lstm = tf.contrib.cudnn_rnn.CudnnGRU(num_layers=1, num_units=self.lstm_units, name='_lstm')
+                lstm = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1, num_units=self.lstm_units, name='_lstm')
                 rnn, rnn_state = lstm(inputs=convFlat)
             else:
                 print('Using LSTMfused')
@@ -262,6 +269,7 @@ class drqn_agent_efficient():
         # make the prediction
         legible = predict_score >= threshold
         legible[station]=True
+
        # print(self.conf)
         if rng<e: #epsilon greedy
             if e==1:
@@ -278,12 +286,12 @@ class drqn_agent_efficient():
             adj_predict=predict_score
             a=adj_predict<threshold
             b=adj_predict>=threshold
+
             # if sum(b)<=2:
             #     b=adj_predict.argsort()[-3:][::-1]
             # print('Feasible Solution:',sum(b), 'Station ID:',station)
             adj_predict[a]=1e4
             adj_predict[b]=0;
-            adj_predict[station]=0;
             Q= self.sess.run(self.mainPredict[station], feed_dict={self.scalarInput[station]: [s], self.trainLength: 1, self.batch_size: 1,self.predict_score[station]:[adj_predict]})
             action=Q[0]
 

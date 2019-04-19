@@ -72,7 +72,7 @@ class taxi_simulator():
         self.taxi_in_q = [deque([])  for i in range(self.N)]  # taxis waiting in the queue of each station
         self.taxi_in_charge = [deque([])  for i in range(self.N)]  # taxis charging at each station
         # self.gamma_pool=np.random.gamma(10,size=500000).tolist() #maintain a pool of gamma variable of size 50000
-        self.gamma_pool=(15*np.ones(500000)).tolist()
+        self.gamma_pool=(5*np.ones(500000)).tolist()
 
         self.served_passengers = np.zeros(self.N)
         self.served_passengers_waiting_time = np.zeros(self.N)
@@ -106,7 +106,7 @@ class taxi_simulator():
         # Use -1 to denote no relocation
         # check gamma pool
         if len(self.gamma_pool) < 10000:
-            self.gamma_pool = (15*np.ones(500000)).tolist()
+            self.gamma_pool = (5*np.ones(500000)).tolist()
 
         self.current_action=[-1]*self.N
 
@@ -291,7 +291,7 @@ class taxi_simulator():
         self.taxi_in_q = [deque([])  for i in range(self.N)]  # taxis waiting in the queue of each station
         self.taxi_in_charge = [deque([])  for i in range(self.N)]  # taxis charging at each station
         self.init_taxi()
-        self.gamma_pool = (15*np.ones(500000)).tolist()  # maintain a pool of gamma variable of size 50000
+        self.gamma_pool = (5*np.ones(500000)).tolist()  # maintain a pool of gamma variable of size 50000
         #current action
         self.previous_action=[-1]*self.N #no action made
         self.current_action=[-1]*self.N
@@ -346,7 +346,7 @@ class taxi_simulator():
 
         for i in range(self.N):
             passenger_gap[i, i] = min(len(self.passenger_qtime[i]),max_passenger)/max_passenger
-            awaiting_pass[i]=min(len(self.passenger_qtime[i]),max_passenger)/max_passenger
+            awaiting_pass[i]=len(self.passenger_qtime[i])
         #
         for t in self.taxi_in_travel:
             taxi_in_travel[t.origin, t.destination] += 1
@@ -375,7 +375,7 @@ class taxi_simulator():
         total_taxi_in_travel = taxi_in_travel.sum()
         total_taxi_in_relocation = taxi_in_relocation.sum()
         total_taxi_stay=taxi_in_q.sum()
-        reward = 2*total_taxi_in_travel-total_taxi_in_relocation
+        reward = -sum(awaiting_pass)/max_passenger-total_taxi_in_relocation
         oldreward=total_taxi_in_travel-total_taxi_in_relocation
 
 

@@ -18,3 +18,8 @@ def waiting_time_update(waiting_time,expect_waiting_time):
         new_expect_wait=deque([])
         left_waiting_time = 0 
     return new_wait,new_expect_wait, left_waiting_time
+
+def mutliprocess_sample_bandit(batch,linucb_agent,exp_dist):
+    train_predict_score = linucb_agent.return_upper_bound_batch(batch)
+    train_predict_score = train_predict_score * exp_dist
+    return train_predict_score
