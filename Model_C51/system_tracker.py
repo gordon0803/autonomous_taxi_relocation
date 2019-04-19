@@ -34,7 +34,7 @@ class system_tracker():
 	def initialize(self, distance, travel_time, arrival_rate, taxi_input, N_station, num_episode, max_epLength,  mode = 'Endpoint'):
 		self.baseinfo['distance'] = distance.tolist()
 		self.baseinfo['travel_time'] = travel_time.tolist()
-		self.baseinfo['arrival_rate'] = arrival_rate
+		self.baseinfo['arrival_rate'] = [l.tolist() for l in arrival_rate]
 		self.baseinfo['taxi_input'] = int(taxi_input) # transform numpy.int64 to normal integer
 		self.baseinfo['N_station'] = N_station
 		self.baseinfo['N_epilength'] = max_epLength
@@ -61,11 +61,11 @@ class system_tracker():
 			passenger_gap = np.diag(np.reshape(s[range(0,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station)))
 			taxi_in_travel = np.reshape(s[range(1,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station))
 			taxi_in_relocation = np.reshape(s[range(2,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station))
-			taxi_in_charge = np.diag(np.reshape(s[range(4,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station)))
+			taxi_in_charge = np.diag(np.reshape(s[range(3,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station)))
 			action = [int(x) for x in a]
 			oneframeinfo = {
-			"taxi_in_travel": taxi_in_travel.sum()*self.total_taxi,
-			"taxi_in_relocation": taxi_in_relocation.sum()*self.total_taxi,
+			"taxi_in_travel": (taxi_in_travel.sum()*self.total_taxi).tolist(),
+			"taxi_in_relocation": (taxi_in_relocation.sum()*self.total_taxi).tolist(),
 			"passenger_gap":(passenger_gap*50).tolist(),
 			"taxi_in_charge":(taxi_in_charge*self.total_taxi).tolist(),
 			"action": action

@@ -47,7 +47,12 @@ warmup_time=config.TRAIN_CONFIG['warmup_time'];
 max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength*50 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
+rng_seed=config.TRAIN_CONFIG['random_seed']
+
 greedy_option = "inventory"
+
+#set rng seed
+np.random.seed(rng_seed)
 
 # Initialize the system tracker
 sys_tracker = system_tracker()
@@ -75,7 +80,7 @@ stand_agent = []
 # targetOps=[]
 
 for station in range(N_station):
-	stand_agent.append(GREEDY_agent.greedy_agent(str(station), N_station, arrival_rate, loc_neighbor[station],int(taxi_input*N_station)))
+	stand_agent.append(GREEDY_agent.greedy_agent(str(station), N_station, loc_neighbor[station],int(taxi_input*N_station)))
 
 
 for i in range(num_episodes):
