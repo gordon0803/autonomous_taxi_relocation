@@ -11,7 +11,7 @@ TRAIN_CONFIG = {
     'startE':1,
     'endE':0.05,
     'anneling_steps':200*1000,
-    'num_episodes':20,
+    'num_episodes':250,
     'buffer_size':5000,
     'prioritized':0,
     'load_model':False,

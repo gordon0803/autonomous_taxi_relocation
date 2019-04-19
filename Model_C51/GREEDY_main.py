@@ -17,8 +17,7 @@ from system_tracker import system_tracker
 # config.gpu_options.allow_growth = True
 # session = tf.Session(config=config)
 
-reward_out=open('log/reward_log_greedy.csv', 'w')  #Replace the old log
-
+greedy_option = "greedy"
 #------------------Parameter setting-----------------------
 with open('simulation_input.dat','rb') as fp:
     simulation_input=pickle.load(fp)
@@ -49,7 +48,7 @@ pre_train_steps = max_epLength*50 #How many steps of random actions before train
 softmax_action=config.TRAIN_CONFIG['softmax_action']
 rng_seed=config.TRAIN_CONFIG['random_seed']
 
-greedy_option = "inventory"
+reward_out=open('log/reward_log_'+greedy_option+'_'+str(rng_seed)+'.csv', 'w')  #Replace the old log
 
 #set rng seed
 np.random.seed(rng_seed)
@@ -157,5 +156,5 @@ for i in range(num_episodes):
     reward_out.write(str(j)+','+str(rAll)+'\n')
 reward_out.close()
 
-sys_tracker.save(greedy_option)
+sys_tracker.save(greedy_option+'_'+str(rng_seed))
 sys_tracker.playback(-1)
