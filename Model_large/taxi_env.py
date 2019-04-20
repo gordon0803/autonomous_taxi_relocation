@@ -42,13 +42,14 @@ class taxi_simulator():
     def __init__(self, arrival_rate, OD_mat, dist_mat, time_mat, taxi_input):
         # lamba is a vector of size 1 by N
         # OD_mat,dist_mat, and time_mat are list of list of size N by N
-
+        self.timer=0 #current step
         # number of taxi stands
         self.N = len(arrival_rate)
         # list of station IDs from 0 to N-1
         self.station_list = np.array([i for i in range(self.N)])
         # passenger arrival rate
-        self.arrival_rate = arrival_rate
+        self.arrival_input = arrival_rate
+
         # OD ratio matrix of all taxi stands
         self.OD_split=OD_mat
 
@@ -71,8 +72,10 @@ class taxi_simulator():
         self.taxi_in_q = [deque([])  for i in range(self.N)]  # taxis waiting in the queue of each station
         self.taxi_in_charge = [deque([])  for i in range(self.N)]  # taxis charging at each station
         # self.gamma_pool=np.random.gamma(10,size=500000).tolist() #maintain a pool of gamma variable of size 50000
-        self.gamma_pool=(50*np.ones(500000)).tolist()
-        # initialize waiting time tracker
+        self.gamma_pool=(10*np.ones(500000)).tolist()
+
+        self.served_passengers = np.zeros(self.N)
+        self.served_passengers_waiting_time = np.zeros(self.N)
         self.leaved_passengers = np.zeros(self.N)
         self.leaved_passengers_waiting_time = np.zeros(self.N)
 
@@ -83,9 +86,6 @@ class taxi_simulator():
         taxi_input = self.taxi_input
         #create random taxi initial numbers
         rnd_array = np.random.multinomial(taxi_input*self.N, np.ones(self.N) / self.N, size=1)[0]
-        for s in range(self.N):
-            rnd_array[s]=self.taxi_input
-
         if not isinstance(taxi_input, list):
             taxi_input = rnd_array
 
@@ -106,9 +106,10 @@ class taxi_simulator():
         # Use -1 to denote no relocation
         # check gamma pool
         if len(self.gamma_pool) < 10000:
-            self.gamma_pool = (50*np.ones(500000)).tolist()
-
+            self.gamma_pool = (10*np.ones(500000)).tolist()
+        
         self.current_action=[-1]*self.N
+        self.clock=self.timer//120 #decide which time interval it falls into
 
         for i in range(len(action)):
             if action[i] > -1:
@@ -136,6 +137,8 @@ class taxi_simulator():
         # step 5: serve passengers
         self.passenger_serve()
 
+        self.timer+=1
+
         return self.served_pass,self.left_pass
 
     # 2: all taxi traveling
@@ -153,7 +156,7 @@ class taxi_simulator():
             for j in range(len(self.taxi_in_charge[i])):
                 if self.taxi_in_charge[i]:
                     taxi = self.taxi_in_charge[i].popleft()
-                    taxi.battery += 0.05 * taxi.max_battery  # every time step, 0.5% of battery get charged
+                    taxi.battery += 0.1 * taxi.max_battery  # every time step, 0.5% of battery get charged
                     if taxi.battery >= taxi.max_battery:
                         taxi.battery = taxi.max_battery
                         self.taxi_in_q[i].append(taxi)
@@ -194,7 +197,6 @@ class taxi_simulator():
                 else:
                  # still in travel, send this taxi back to the travel list
                     self.taxi_in_relocation.append(taxi)
-
     # 5: update passenger waiting, leave, and generate passengers
     def passenger_update(self):
         for i in range(self.N):
@@ -206,12 +208,12 @@ class taxi_simulator():
                 self.passenger_qtime[i], self.passenger_expect_wait[i], left_waiting_time = util.waiting_time_update(self.passenger_qtime[i],self.passenger_expect_wait[i])
 
                 self.left_pass+=len(self.passenger_qtime[i])-tp
-                # record information
                 self.leaved_passengers[i]+=tp-len(self.passenger_qtime[i])
                 self.leaved_passengers_waiting_time[i]+=left_waiting_time
+
             # new passengers
-            n_pass_arrive = np.random.poisson(self.arrival_rate[i])
-            destination = np.random.choice(self.station_list, n_pass_arrive, self.OD_split[i]).tolist()
+            n_pass_arrive = self.arrival_rate[i][self.timer]
+            destination = np.random.choice(self.station_list, n_pass_arrive, self.OD_split[self.clock][i]).tolist()
             # add passengers to the queue
             # new passengers with 0 waiting time
             #a different way of getting ride of for loop
@@ -220,6 +222,7 @@ class taxi_simulator():
             self.passenger_expect_wait[i]+=expect_wait_append
             # del self.gamma_pool[:n_pass_arrive]
             self.passenger_destination[i] += destination
+
 
             # for j in range(n_pass_arrive):
             #     self.passenger_qtime[i].append(0)
@@ -289,7 +292,7 @@ class taxi_simulator():
         self.taxi_in_q = [deque([])  for i in range(self.N)]  # taxis waiting in the queue of each station
         self.taxi_in_charge = [deque([])  for i in range(self.N)]  # taxis charging at each station
         self.init_taxi()
-        self.gamma_pool = (50*np.ones(500000)).tolist()  # maintain a pool of gamma variable of size 50000
+        self.gamma_pool = (10*np.ones(500000)).tolist()  # maintain a pool of gamma variable of size 50000
         #current action
         self.previous_action=[-1]*self.N #no action made
         self.current_action=[-1]*self.N
@@ -301,12 +304,25 @@ class taxi_simulator():
         self.leaved_passengers = np.zeros(self.N)
         self.leaved_passengers_waiting_time = np.zeros(self.N)
 
+        self.timer=0;
+
+        #pregeneration demand
+        self.arrival_rate = []
+        max_time_step = 2880;
+        steps = max_time_step // (len(self.arrival_input[0]) - 1)
+        x_base = [steps * i for i in range(len(self.arrival_input[0]))]
+        x_project = [i for i in range(max_time_step)]
+        for i in range(self.N):
+            arrive = np.interp(x_project, x_base, self.arrival_input[i])
+            arrive = np.random.poisson(arrive).tolist()
+            self.arrival_rate.append(arrive)
+
 
     def get_state(self):
         # give the states of the system after all the executions
         # the state of the system is a 3 N by N matrix
         max_passenger=50;
-        state = np.zeros([self.N, self.N, 4])
+        state = np.ones([self.N, self.N, 5])
         passenger_gap = np.zeros((self.N, self.N))
         taxi_in_travel = np.zeros((self.N, self.N))
         taxi_in_relocation = np.zeros((self.N, self.N))
@@ -331,7 +347,7 @@ class taxi_simulator():
 
         for i in range(self.N):
             passenger_gap[i, i] = min(len(self.passenger_qtime[i]),max_passenger)/max_passenger
-            awaiting_pass[i]=min(len(self.passenger_qtime[i]),max_passenger)/max_passenger
+            awaiting_pass[i]=len(self.passenger_qtime[i])
         #
         for t in self.taxi_in_travel:
             taxi_in_travel[t.origin, t.destination] += 1
@@ -355,12 +371,13 @@ class taxi_simulator():
         state[:, :, 1] = taxi_in_travel;
         state[:, :, 2] = taxi_in_relocation;
         state[:, :, 3] = taxi_in_q;
+        state[:,:,4] = taxi_in_charge;
         # reward
         total_taxi_in_travel = taxi_in_travel.sum()
         total_taxi_in_relocation = taxi_in_relocation.sum()
-        reward = (total_taxi_in_travel-total_taxi_in_relocation)
-        newreward=reshape_reward(reward,0.2)
-        newreward=reward
+        total_taxi_stay=taxi_in_q.sum()
+        reward = -sum(awaiting_pass)/max_passenger-total_taxi_in_relocation
+        oldreward=total_taxi_in_travel-total_taxi_in_relocation
 
 
         #calculate linear features and scores
@@ -380,7 +397,9 @@ class taxi_simulator():
 
             score.append(self.score[i])
 
-        return state, newreward, np.array(feature),np.array(score),reward
+
+
+        return state, reward, np.array(feature),np.array(score),reward
 
 
 def safe_div(x,y):
@@ -390,20 +409,3 @@ def safe_div(x,y):
 
 def sigmoid(x):
     return 0.9+0.5/(1+math.exp(-x))
-
-
-
-
-def reshape_reward(r,v):
-    #v is the clipping value
-    # if r>v:
-    #     a=1/(2*v)
-    #     b=v/2;
-    #     r=a*(r**2)+b
-    if r>0:
-        r=np.exp(5*r)-1
-    else:
-        r=-np.exp(-5*r)+1
-
-    r/=(np.exp(5)-1)
-    return r
