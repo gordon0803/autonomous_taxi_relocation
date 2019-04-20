@@ -3,17 +3,37 @@ import json
 import math
 import pickle
 import taxi_util
+import glob
 
 simulation_input = dict()
 
-N_station = 50;
+N_station = 70;
 distance = np.loadtxt(open('nycdata/selected_dist.csv','rb'),delimiter=',')
 travel_time = np.loadtxt(open('nycdata/selected_time.csv','rb'),delimiter=',')
-OD_mat=np.loadtxt(open('nycdata/od_50.csv','rb'),delimiter=',')
 
+#load the list of OD files, and normalize them to proper time interval
+OD_mat=[]
+normalize_od=30;
+for file in glob.glob('od_mat/*.csv'):
+    print(file)
+    tempOD=np.genfromtxt(file, delimiter=',')
+    tempOD/=mormalized_od #convert into every minutes 
+    OD_mat.append()
+    
+#OD_mat=np.loadtxt(open('nycdata/od_70.csv','rb'),delimiter=',')
 
-OD_mat=OD_mat/1400;  #every 10 seconds
-travel_time=travel_time*15;
+travel_time=travel_time;
+
+#convert arrival rate into 
+travel_time=travel_time;
+
+#process arrival input, each item is the 48 time intervals for each station
+arrival_rate=[[] for i in range(N_station)] #initialize
+for i in range(len(OD_mat)):
+    demand=OD_mat.sum(axis=1) #row sum
+    for j in range(len(demand)):
+        arrival_rate[j].append(demand[j])
+
 arrival_rate=OD_mat.sum(axis=1) #row sum for passenger arrival at the station
 incoming__taxi=OD_mat.sum(axis=0)
 
