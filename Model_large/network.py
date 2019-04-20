@@ -183,7 +183,7 @@ def updateTargetGraph(tfVars,tau):
 
 def processState(state,Nstation):
     #input is the N by N by 6 tuple, map it to a list
-    input_dim=4;
+    input_dim=5;
     return np.reshape(state,[Nstation*Nstation*input_dim])
 
 
