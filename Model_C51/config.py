@@ -7,7 +7,7 @@ TRAIN_CONFIG = {
     'update_freq': 30,
     'lstm_unit':256,
     'y': .99,
-    'elimination_threshold':0.8,
+    'elimination_threshold':0.2,
     'startE':1,
     'endE':0.05,
     'anneling_steps':250*1000,
@@ -23,7 +23,7 @@ TRAIN_CONFIG = {
     'softmax_action':False, #use softmax or not
     'silent': 1, #0 for print, 1 for no print
     'use_linear':1,
-    'use_tracker':0,
+    'use_tracker':1,
     'random_seed':0 #specify the random seed used across the experiments
 }
 

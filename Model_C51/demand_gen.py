@@ -35,6 +35,7 @@ for i in range(N_station):
 print(OD_mat)
 
 exp_dist=[] #expected trip distance starting at each station
+
 for i in range(N_station):
     v=0
     for j in range(N_station):

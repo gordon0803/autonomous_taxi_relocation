@@ -309,13 +309,14 @@ class taxi_simulator():
         #pregeneration demand
         self.arrival_rate = []
         max_time_step = 2880;
-        steps = max_time_step // (len(self.arrival_input[0]) - 1)
+        steps = max_time_step // (len(self.arrival_input[0]) ) -1
         x_base = [steps * i for i in range(len(self.arrival_input[0]))]
         x_project = [i for i in range(max_time_step)]
         for i in range(self.N):
             arrive = np.interp(x_project, x_base, self.arrival_input[i])
             arrive = np.random.poisson(arrive).tolist()
             self.arrival_rate.append(arrive)
+
 
 
     def get_state(self):

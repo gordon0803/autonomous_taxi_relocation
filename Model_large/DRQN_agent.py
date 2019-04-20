@@ -218,15 +218,15 @@ class drqn_agent_efficient():
             conv1 = tf.nn.relu(tf.layers.conv2d( \
                 inputs=input_conv, filters=16, \
                 kernel_size=[8, 8], strides=[3, 3], padding='VALID', \
-                name=myScope + '_net_conv1'))
+                name='_net_conv1'))
             conv2 = tf.nn.relu(tf.layers.conv2d( \
                  inputs=conv1, filters=32, \
                  kernel_size=[4, 4], strides=[2, 2], padding='VALID', \
-                 name=myScope + '_net_conv2'))
+                 name='_net_conv2'))
             conv3 = tf.nn.relu(tf.layers.conv2d( \
                  inputs=conv2, filters=32, \
                  kernel_size=[2, 2], strides=[1, 1], padding='VALID', \
-                 name=myScope + '_net_conv3'))
+                 name='_net_conv3'))
             convFlat = tf.reshape(slim.flatten(conv3), [self.batch_size, self.trainLength, self.h_size],
                                   name='_convlution_flattern')
             if self.use_gpu:
@@ -249,15 +249,15 @@ class drqn_agent_efficient():
             conv1 = tf.nn.relu(tf.layers.conv2d( \
                 inputs=input_conv, filters=16, \
                 kernel_size=[8, 8], strides=[3, 3], padding='VALID', \
-                name=myScope + '_net_conv1'))
+                name='_net_conv1'))
             conv2 = tf.nn.relu(tf.layers.conv2d( \
                  inputs=conv1, filters=32, \
                  kernel_size=[4, 4], strides=[2, 2], padding='VALID', \
-                 name=myScope + '_net_conv2'))
+                 name='_net_conv2'))
             conv3 = tf.nn.relu(tf.layers.conv2d( \
                  inputs=conv2, filters=32, \
                  kernel_size=[2, 2], strides=[1, 1], padding='VALID', \
-                 name=myScope + '_net_conv3'))
+                 name='_net_conv3'))
             convFlat = tf.reshape(slim.flatten(conv3), [self.batch_size, self.trainLength, self.h_size],
                                   name='_convlution_flattern')
             if self.use_gpu:

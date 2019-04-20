@@ -34,7 +34,7 @@ class system_tracker():
 	def initialize(self, distance, travel_time, arrival_rate, taxi_input, N_station, num_episode, max_epLength,  mode = 'Endpoint'):
 		self.baseinfo['distance'] = distance.tolist()
 		self.baseinfo['travel_time'] = travel_time.tolist()
-		self.baseinfo['arrival_rate'] = arrival_rate.tolist()
+		self.baseinfo['arrival_rate'] = arrival_rate
 		self.baseinfo['taxi_input'] = int(taxi_input) # transform numpy.int64 to normal integer
 		self.baseinfo['N_station'] = N_station
 		self.baseinfo['N_epilength'] = max_epLength
