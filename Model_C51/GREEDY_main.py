@@ -17,8 +17,7 @@ from system_tracker import system_tracker
 # config.gpu_options.allow_growth = True
 # session = tf.Session(config=config)
 
-reward_out=open('log/reward_log_greedy.csv', 'w')  #Replace the old log
-
+greedy_option = "greedy"
 #------------------Parameter setting-----------------------
 with open('simulation_input.dat','rb') as fp:
     simulation_input=pickle.load(fp)
@@ -47,7 +46,12 @@ warmup_time=config.TRAIN_CONFIG['warmup_time'];
 max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength*50 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
-greedy_option = "inventory"
+rng_seed=config.TRAIN_CONFIG['random_seed']
+
+reward_out=open('log/reward_log_'+greedy_option+'_'+str(rng_seed)+'.csv', 'w')  #Replace the old log
+
+#set rng seed
+np.random.seed(rng_seed)
 
 # Initialize the system tracker
 sys_tracker = system_tracker()
@@ -75,7 +79,7 @@ stand_agent = []
 # targetOps=[]
 
 for station in range(N_station):
-	stand_agent.append(GREEDY_agent.greedy_agent(str(station), N_station, arrival_rate, loc_neighbor[station],int(taxi_input*N_station)))
+	stand_agent.append(GREEDY_agent.greedy_agent(str(station), N_station, loc_neighbor[station],int(taxi_input*N_station)))
 
 
 for i in range(num_episodes):
@@ -152,5 +156,5 @@ for i in range(num_episodes):
     reward_out.write(str(j)+','+str(rAll)+'\n')
 reward_out.close()
 
-sys_tracker.save(greedy_option)
+sys_tracker.save(greedy_option+'_'+str(rng_seed))
 sys_tracker.playback(-1)
