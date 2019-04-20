@@ -10,7 +10,7 @@ TRAIN_CONFIG = {
     'elimination_threshold':0.8,
     'startE':1,
     'endE':0.05,
-    'anneling_steps':250*1000,
+    'anneling_steps':250*2880,
     'num_episodes':300,
     'buffer_size':5000,
     'prioritized':0,
