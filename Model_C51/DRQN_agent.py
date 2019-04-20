@@ -36,7 +36,7 @@ class drqn_agent_efficient():
         #QR params
         self.N=100; #number of quantiles
         self.k=1; #huber loss
-        self.gamma=0.99**1#discount factor
+        self.gamma=config.TRAIN_CONFIG['y']
         self.conf=1
 
         #risk averse
@@ -151,9 +151,9 @@ class drqn_agent_efficient():
 
 
     def build_train(self):
-        maskA = tf.zeros([self.batch_size, self.train_length//2])  # Mask first 20 records are shown to have the best results
+        maskA = tf.ones([self.batch_size, self.train_length//2])  # Mask first 20 records are shown to have the best results
         maskB = tf.ones([self.batch_size, self.train_length//2])
-        mask = tf.concat([maskA, maskB], 1)
+        mask = tf.ones([self.batch_size, self.train_length])
 
         self.mask = tf.reshape(mask, [-1])
         self.trainer = tf.train.AdamOptimizer(learning_rate=0.001, name='Adam_opt')

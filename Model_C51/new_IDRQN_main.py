@@ -61,6 +61,7 @@ silent = config.TRAIN_CONFIG['silent']  # do not print training time
 prioritized = config.TRAIN_CONFIG['prioritized']
 rng_seed=config.TRAIN_CONFIG['random_seed']
 
+
 #set rng seed
 np.random.seed(rng_seed)
 
@@ -93,9 +94,11 @@ nn = 0
 if not os.path.exists(path):
     os.makedirs(path)
 
-linucb_agent=bandit.linucb_agnet(N_station,N_station*4)
-exp_replay = network.experience_buffer(3000)  # a single buffer holds everything
-bandit_buffer = network.bandit_buffer(2000)
+linucb_agent=bandit.linucb_agent(N_station,N_station*4)
+exp_replay = network.experience_buffer(10000)  # a single buffer holds everything
+bandit_buffer = network.bandit_buffer(20000)
+bandit_swap_e=1;
+linucb_backup=bandit.linucb_agent(N_station,N_station*4)
 
 # # this step loads the model from the model that has been saved
 # if load_model == True:
@@ -149,6 +152,11 @@ with tf.Session(config=config1) as sess:
         # replace the state action with future states
         feature=featurep
         s = network.processState(sP, N_station)
+        pres=s
+        prea=np.zeros((N_station))
+
+        within_frame_reward = 0
+        frame_skipping = 1
 
         rAll = 0
         rAll_unshape=0
@@ -159,13 +167,30 @@ with tf.Session(config=config1) as sess:
         buffer_count=0;
         # We train one station in one single episode, and hold it unchanged for other stations, and we keep rotating.
         tinit=time.time()
+        a = [st for st in range(N_station)]
+
+        #bandit swapping scheme
+        if bandit_swap_e - e >.05:  # we do swapping when $e$ got declined by 0.05 percent.
+            # linucb_backup_temp = bandit.linucb_agent(N_station, N_station * 4)
+            # for arm in range(len(linucb_agent.Aa)):
+            #     linucb_backup_temp.Aa[arm] = linucb_backup.Aa[arm]+0.1*np.identity(N_station * 4)
+            #     linucb_backup_temp.ba[arm]= linucb_backup.ba[arm]
+            # linucb=linucb_backup
+            # linucb_backup=linucb_backup_temp
+            # bandit_swap_e = e;
+
+            #we completely discard previous observations after every 10% change of environment
+            linucb_agent=bandit.linucb_agent(N_station, N_station * 4)
+            linubc_train = bandit_buffer.sample(5000)
+            linucb_agent.update(linubc_train[:, 4], linubc_train[:, 1], linubc_train[:, 5])
+            bandit_swap_e=e
+
+            print('we swap bandit here')
+
         while j < max_epLength:
             # agent.update_conf(1,1.5*anneling_steps)
             tall=time.time()
             j += 1
-
-
-
             # for all the stations, act greedily
             # Choose an action by greedily (with e chance of random action) from the Q-network
 
@@ -344,6 +369,3 @@ outf.close()
 reward_out.close()
 sys_tracker.save('IDRQN')
 sys_tracker.playback(-1)
-
-
-
