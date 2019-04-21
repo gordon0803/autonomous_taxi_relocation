@@ -55,7 +55,7 @@ np.random.seed(rng_seed)
 
 # Initialize the system tracker
 sys_tracker = system_tracker()
-sys_tracker.initialize(config, distance, travel_time, arrival_rate, int(taxi_input*N_station), N_station, num_episodes, max_epLength)
+sys_tracker.initialize(config, distance, travel_time, arrival_rate, int(taxi_input), N_station, num_episodes, max_epLength)
 
 #------------------Train the network-----------------------
 
@@ -106,7 +106,7 @@ for i in range(num_episodes):
        a=[-1]*N_station
        # for all the stations, act greedily
        # Choose an action by greedily (with gap) for this time
-       if greedy_option=="softmax":  #use softmax
+       if greedy_option=="rational":  #use softmax
            for station in range(N_station):
                prob=stand_agent[station].predict_softmax(s)
                a1=np.random.choice(list(range(N_station)),1,p=prob)[0]

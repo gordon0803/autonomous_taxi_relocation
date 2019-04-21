@@ -27,6 +27,7 @@ config1.gpu_options.allow_growth = True
 
 reward_out = open('log/IDRQN_reward_log_' + datetime.now().strftime('%Y-%m-%d %H-%M-%S') + '.csv', 'w+')
 
+
 with open('simulation_input.dat', 'rb') as fp:
     simulation_input = pickle.load(fp)
 
@@ -70,7 +71,7 @@ tau = 0.01
 
 # --------------Simulation initialization
 sys_tracker = system_tracker()
-sys_tracker.initialize(config, distance, travel_time, arrival_rate, int(taxi_input*N_station), N_station, num_episodes, max_epLength)
+sys_tracker.initialize(config, distance, travel_time, arrival_rate, int(taxi_input), N_station, num_episodes, max_epLength)
 env = te.taxi_simulator(arrival_rate, OD_mat, distance, travel_time, taxi_input)
 env.reset()
 print('System Successfully Initialized!')
