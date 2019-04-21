@@ -59,7 +59,7 @@ tau = 0.1
 
 # --------------Simulation initialization
 sys_tracker = system_tracker()
-sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input), N_station, num_episodes, max_epLength)
+sys_tracker.initialize(config, distance, travel_time, arrival_rate, int(taxi_input), N_station, num_episodes, max_epLength)
 env = te.taxi_simulator(arrival_rate, OD_mat, distance, travel_time, taxi_input)
 env.reset()
 print('System Successfully Initialized!')

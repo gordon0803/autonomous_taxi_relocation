@@ -31,7 +31,8 @@ class system_tracker():
 		self.timestep = 0
 		self.recording = False
 
-	def initialize(self, distance, travel_time, arrival_rate, taxi_input, N_station, num_episode, max_epLength,  mode = 'Endpoint'):
+	def initialize(self, config, distance, travel_time, arrival_rate, taxi_input, N_station, num_episode, max_epLength,  mode = 'Endpoint'):
+		self.baseinfo['config'] = config.TRAIN_CONFIG
 		self.baseinfo['distance'] = distance.tolist()
 		self.baseinfo['travel_time'] = travel_time.tolist()
 		self.baseinfo['arrival_rate'] = [l.tolist() for l in arrival_rate]
