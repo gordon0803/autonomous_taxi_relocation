@@ -213,7 +213,8 @@ with tf.Session(config=config1) as sess:
             else:  # use e-greedy
                 #predict_score = sess.run(linear_model.linear_Yh, feed_dict={linear_model.linear_X: [feature]})
                 predict_score=linucb_agent.return_upper_bound(feature)
-                predict_score=(predict_score*exp_dist)/distance
+                predict_score=predict_score*exp_dist/distance
+                print(predict_score)
                 rand_num=np.random.rand(1)
                 for station in range(N_station):
                     if env.taxi_in_q[station]:
@@ -308,7 +309,7 @@ with tf.Session(config=config1) as sess:
                         trainBatch= trainBatch_list[station]
                         # generate the linucb score for each batch
                         # train_predict_score= train_predict_score_list[(station)*batch_size*trace_length:(station+1)*batch_size*trace_length,:] * exp_dist
-                        train_predict_score = linucb_agent.return_upper_bound_batch(trainBatch[:, 6]) * exp_dist
+                        train_predict_score = linucb_agent.return_upper_bound_batch(trainBatch[:, 6])*exp_dist
                         tr, t_action = agent.train_prepare(trainBatch, station)
                         tp = train_predict_score/ distance[station, :]
                         af = tp < e_threshold

@@ -2,9 +2,9 @@
 import demand_gen
 
 TRAIN_CONFIG = {
-    'batch_size':32,
+    'batch_size':64,
     'trace_length': 5,
-    'update_freq': 140,
+    'update_freq': 150,
     'lstm_unit':512,
     'y': .99,
     'elimination_threshold':0.3,
@@ -23,7 +23,7 @@ TRAIN_CONFIG = {
     'softmax_action':False, #use softmax or not
     'silent': 1, #0 for print, 1 for no print
     'use_linear':1,
-    'use_tracker':0,
+    'use_tracker':1,
     'random_seed':0 #specify the random seed used across the experiments
 }
 

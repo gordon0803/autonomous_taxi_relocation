@@ -95,8 +95,8 @@ if not os.path.exists(path):
     os.makedirs(path)
 
 linucb_agent=bandit.linucb_agent(N_station,N_station*4)
-exp_replay = network.experience_buffer(20000)  # a single buffer holds everything
-bandit_buffer = network.bandit_buffer(20000)
+exp_replay = network.experience_buffer(30000)  # a single buffer holds everything
+bandit_buffer = network.bandit_buffer(40000)
 bandit_swap_e=1;
 linucb_backup=bandit.linucb_agent(N_station,N_station*4)
 
@@ -181,8 +181,9 @@ with tf.Session(config=config1) as sess:
 
             #we completely discard previous observations after every 10% change of environment
             linucb_agent=bandit.linucb_agent(N_station, N_station * 4)
-            linubc_train = bandit_buffer.sample(5000)
-            linucb_agent.update(linubc_train[:, 4], linubc_train[:, 1], linubc_train[:, 5])
+            for up in range(3): #update 3 times
+                linubc_train = bandit_buffer.sample(10000)
+                linucb_agent.update(linubc_train[:, 4], linubc_train[:, 1], linubc_train[:, 5])
             bandit_swap_e=e
 
             print('we swap bandit here')
@@ -276,7 +277,7 @@ with tf.Session(config=config1) as sess:
                 buffer_count-=trace_length
 
             if total_steps % (500) == 0 and i>4:
-                linubc_train = bandit_buffer.sample(batch_size * 30)
+                linubc_train = bandit_buffer.sample(batch_size * 15)
                 linucb_agent.update(linubc_train[:, 4], linubc_train[:, 1], linubc_train[:, 5])
 
 
