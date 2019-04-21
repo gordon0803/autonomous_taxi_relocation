@@ -34,16 +34,15 @@ class greedy_agent():
         prob = utility / sum(utility)
         return prob
 
-    def predict_inventory(self,s,inventory_gap):
+    def predict_inventory(self,inventory_gap,threshold):
         action = -1
         #print(inventory_gap)
-        if (inventory_gap[self.name])>=self.threshold[self.name]:
+        if (inventory_gap[self.name])>=threshold[self.name]:
             for neighbor_loc in self.neighbor_loc:
-                if inventory_gap[neighbor_loc]<self.threshold[neighbor_loc]:
+                if inventory_gap[neighbor_loc]<threshold[neighbor_loc]:
                     action = neighbor_loc
                     break
         # update estimation of expect inventory
-        self.threshold = (self.threshold*self.time_step+np.diag(np.reshape(s[range(0,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station)))*self.max_passenger)/(self.time_step+1)
         self.time_step +=1
         return action
 
@@ -51,3 +50,7 @@ class greedy_agent():
         inventory_gap = np.diag(np.reshape(s[range(3,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station)))*self.total_taxi-\
                         np.diag(np.reshape(s[range(0,len(s),len(s)//self.N_station_pair)],(self.N_station,self.N_station)))*self.max_passenger
         return inventory_gap
+
+    def meansure_threshold(self,s):
+        threshold = (self.threshold * self.time_step + np.diag(np.reshape(s[range(0, len(s), len(s) // self.N_station_pair)], (self.N_station, self.N_station))) * self.max_passenger) / (self.time_step + 1)
+        return threshold

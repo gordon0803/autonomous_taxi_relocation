@@ -97,7 +97,7 @@ for i in range(num_episodes):
     j = 0
     total_serve = 0
     total_leave = 0
-
+    threshold = np.zeros(N_station)
     # The Greedy movement
     while j < max_epLength:
        j += 1
@@ -113,8 +113,9 @@ for i in range(num_episodes):
        elif greedy_option=="inventory":  #use softmax
            gap=stand_agent[0].measure_inventory(s)
            for station in range(N_station):
-               a1=stand_agent[station].predict_inventory(s,gap)
+               a1=stand_agent[station].predict_inventory(gap,threshold)
                a[station] = a1  # action performed by rational
+           threshold = stand_agent[0].meansure_threshold(s)
 
        else: #use max gap
            for station in range(N_station):
