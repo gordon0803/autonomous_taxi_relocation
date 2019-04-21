@@ -18,8 +18,7 @@ from system_tracker import system_tracker
 # config.gpu_options.allow_growth = True
 # session = tf.Session(config=config)
 
-reward_out=open('log/reward_log_greedy.csv', 'w')  #Replace the old log
-
+greedy_option = "inventory"
 #------------------Parameter setting-----------------------
 with open('simulation_input.dat','rb') as fp:
     simulation_input=pickle.load(fp)
@@ -48,11 +47,13 @@ warmup_time=config.TRAIN_CONFIG['warmup_time'];
 max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength*50 #How many steps of random actions before training begins.
 softmax_action=config.TRAIN_CONFIG['softmax_action']
-greedy_option = "inventory"
+rng_seed=config.TRAIN_CONFIG['random_seed']
+
+reward_out=open('log/reward_log_'+greedy_option+'_'+str(rng_seed)+'.csv', 'w')  #Replace the old log
 
 
 sys_tracker = system_tracker()
-sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input*N_station), N_station, num_episodes, max_epLength)
+sys_tracker.initialize(config, distance, travel_time, arrival_rate, int(taxi_input), N_station, num_episodes, max_epLength)
 
 #------------------Train the network-----------------------
 
@@ -76,7 +77,7 @@ stand_agent = []
 # targetOps=[]
 
 for station in range(N_station):
-	stand_agent.append(GREEDY_agent.greedy_agent(str(station), N_station, arrival_rate, loc_neighbor[station],int(taxi_input*N_station)))
+	stand_agent.append(GREEDY_agent.greedy_agent(str(station), N_station, loc_neighbor[station],int(taxi_input*N_station)))
 
 
 for i in range(num_episodes):
@@ -103,17 +104,21 @@ for i in range(num_episodes):
        a=[-1]*N_station
        # for all the stations, act greedily
        # Choose an action by greedily (with gap) for this time
-       if softmax_action==True:  #use softmax
+       if greedy_option=="rational":  #use softmax
            for station in range(N_station):
                prob=stand_agent[station].predict_softmax(s)
                a1=np.random.choice(list(range(N_station)),1,p=prob)[0]
-               a[station] = a1  # action performed by DRQN
+               a[station] = a1  # action performed by rational
 
+       elif greedy_option=="inventory":  #use softmax
+           for station in range(N_station):
+               a1=stand_agent[station].predict_inventory(s)
+               a[station] = a1  # action performed by rational
 
        else: #use max gap
            for station in range(N_station):
                a1 = stand_agent[station].predict(s)
-               a[station]=a1 #action performed by DRQN
+               a[station]=a1 #action performed by greedy
                if not env.taxi_in_q[station]:
                    a[station]=station
 
