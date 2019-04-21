@@ -275,7 +275,7 @@ with tf.Session(config=config1) as sess:
                 buffer_count-=trace_length
 
             if total_steps % (500) == 0 and i>4:
-                linubc_train = bandit_buffer.sample(batch_size * 20)
+                linubc_train = bandit_buffer.sample(batch_size * 40)
                 linucb_agent.update(linubc_train[:, 4], linubc_train[:, 1], linubc_train[:, 5])
 
 
@@ -292,38 +292,44 @@ with tf.Session(config=config1) as sess:
                     # print('LINUCB predict time:', time.time() - t1)
                     #get targetQ
                     t1=time.time()
-                    Q_train_dict[agent.trainLength] = trace_length
-                    Q_train_dict[agent.batch_size] = batch_size
-                    Q_input_dict[agent.trainLength] = trace_length
-                    Q_input_dict[agent.batch_size] = batch_size
 
                     #the set of batches created
-                    trainBatch_list=[exp_replay.sample(batch_size, trace_length)  for st in range(N_station)]
-                    #generate the linucb score for each batch
-                    train_predict_score_list=[linucb_agent.return_upper_bound_batch(trainBatch_list[st][:,6])*exp_dist for st in range(N_station)]
+                    # trainBatch_list=exp_replay.sample(batch_size, trace_length)
+                    # #generate the linucb score for each batch
+                    # train_predict_score_list=linucb_agent.return_upper_bound_batch(trainBatch_list[:,6])*exp_dist
+
+                    trainBatch_list = [exp_replay.sample(batch_size, trace_length) for st in range(N_station)]
+                    # train_feature=np.concatenate(([trainBatch_list[st][:,6] for st in range(N_station)]),axis=0)
+                    # train_predict_score_list= linucb_agent.return_upper_bound_batch(train_feature)
+                    # Q_input_dict[agent.scalarInput] = np.vstack(trainBatch_list[:, 3])
+                    # Q_train_dict[agent.scalarInput] = np.vstack(trainBatch_list[:, 0])
 
                     for station in range(N_station):
-                        tr, t_action = agent.train_prepare(trainBatch_list[station], station)
-                        tp = train_predict_score_list[station] / distance[station, :]
+                        trainBatch= trainBatch_list[station]
+                        # generate the linucb score for each batch
+                        # train_predict_score= train_predict_score_list[(station)*batch_size*trace_length:(station+1)*batch_size*trace_length,:] * exp_dist
+                        train_predict_score = linucb_agent.return_upper_bound_batch(trainBatch[:, 6]) * exp_dist
+                        tr, t_action = agent.train_prepare(trainBatch, station)
+                        tp = train_predict_score/ distance[station, :]
                         af = tp < e_threshold
                         bf = tp >= e_threshold
                         tp[af] = 100
                         tp[bf] = 0
                         tp[:, station] = 0
                         # train input
-                        Q_input_dict[agent.scalarInput[station]] = np.vstack(trainBatch_list[station][:, 3])
-                        Q_input_dict[agent.predict_score[station]] = tp
-                        Q_input_dict[agent.rewards[station]] = tr
-                        Q_train_dict[agent.scalarInput[station]] = np.vstack(trainBatch_list[station][:, 0])
-                        Q_train_dict[agent.rewards[station]] = tr
-                        Q_train_dict[agent.actions[station]] = t_action
-
-                    targetz = sess.run(Q1_in, feed_dict=Q_input_dict)
-
-                    for station in range(N_station):
-                        Q_train_dict[agent.targetQ[station]] = targetz[station]
-
-                    sess.run(Q_train, feed_dict=Q_train_dict)
+                        # Q_input_dict[agent.predict_score[station]] = tp
+                        # Q_input_dict[agent.rewards[station]] = tr
+                        # Q_train_dict[agent.rewards[station]] = tr
+                        # Q_train_dict[agent.actions[station]] = t_action
+                        tz=sess.run(agent.targetZ[station],feed_dict={agent.predict_score[station]:tp,agent.rewards[station]:tr,agent.scalarInput:np.vstack(trainBatch[:, 3]),agent.trainLength:trace_length,agent.batch_size:batch_size})
+                        #train
+                        sess.run(agent.updateModel[station],feed_dict={agent.targetQ[station]:tz,agent.rewards[station]:tr,agent.actions[station]:t_action,agent.scalarInput:np.vstack(trainBatch[:, 0]),agent.trainLength:trace_length,agent.batch_size:batch_size})
+                    # # targetz = sess.run(Q1_in, feed_dict=Q_input_dict)
+                    #
+                    # for station in range(N_station):
+                    #      Q_train_dict[agent.targetQ[station]] = targetz[station]
+                    #
+                    # sess.run(Q_train, feed_dict=Q_train_dict)
                     # print('train time:', time.time() - t1)
                     # print('Sequential Train time:', time.time()-t1)
 

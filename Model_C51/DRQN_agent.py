@@ -59,7 +59,7 @@ class drqn_agent_efficient():
 
         #place holders.
         #for current observations
-        self.scalarInput = [tf.placeholder(shape=[None, N_station * N_station * 5], dtype=tf.float32,name='main_input') for i in range(N_station)]
+        self.scalarInput = tf.placeholder(shape=[None, N_station * N_station * 5], dtype=tf.float32,name='main_input')
         self.trainLength = tf.placeholder(dtype=tf.int32, name= 'trainlength')
         self.batch_size = tf.placeholder(dtype=tf.int32, shape=[], name= 'batchsize')
         self.targetQ=[]
@@ -98,7 +98,7 @@ class drqn_agent_efficient():
         for i in range(self.N_station):
             # The output from the recurrent player is then split into separate Value and Advantage streams
             myScope = 'DRQN_main_' + str(i)
-            rnn=self.main_rnn(self.scalarInput[i])
+            rnn=self.main_rnn(self.scalarInput)
             streamA, streamV = tf.split(rnn, 2, 1, name=myScope + '_split_streamAV')
             AW = tf.Variable(tf.random_normal([self.lstm_units // 2, (self.N_station)*self.N]), name=myScope + 'AW')  # action +1, with the last action being station without any vehicles
 
@@ -134,7 +134,7 @@ class drqn_agent_efficient():
         ##construct the main network
         for i in range(self.N_station):
             myScope = 'DRQN_target_' + str(i)
-            rnn=self.target_rnn(self.scalarInput[i])
+            rnn=self.target_rnn(self.scalarInput)
             # The output from the recurrent player is then split into separate Value and Advantage streams
             streamA, streamV = tf.split(rnn, 2, 1, name=myScope + '_split_streamAV')
             AW = tf.Variable(tf.random_normal([self.lstm_units // 2, (self.N_station) * self.N]),
@@ -223,8 +223,7 @@ class drqn_agent_efficient():
                 inputs=conv1, filters=32, \
                 kernel_size=[2, 2], strides=[1, 1], padding='VALID', \
                 name='_net_conv2'))
-            convFlat = tf.reshape(slim.flatten(conv2), [self.batch_size, self.trainLength, self.h_size],
-                                  name='_convlution_flattern')
+            convFlat = tf.reshape(slim.flatten(conv2), [self.batch_size, self.trainLength, self.h_size],name='_convlution_flattern')
             if self.use_gpu:
                 print('Using CudnnLSTM')
                 lstm = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1, num_units=self.lstm_units, name='_lstm')
@@ -292,7 +291,7 @@ class drqn_agent_efficient():
             # print('Feasible Solution:',sum(b), 'Station ID:',station)
             adj_predict[a]=1e4
             adj_predict[b]=0;
-            Q= self.sess.run(self.mainPredict[station], feed_dict={self.scalarInput[station]: [s], self.trainLength: 1, self.batch_size: 1,self.predict_score[station]:[adj_predict]})
+            Q= self.sess.run(self.mainPredict[station], feed_dict={self.scalarInput: [s], self.trainLength: 1, self.batch_size: 1,self.predict_score[station]:[adj_predict]})
             action=Q[0]
 
         return action

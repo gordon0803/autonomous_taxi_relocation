@@ -3,15 +3,16 @@
   <component name="ChangeListManager">
     <list default="true" id="dad78855-d8dd-4cb5-b79d-257bd1a32af0" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DRQN_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/DRQN_agent.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/bandit.py" beforeDir="false" afterPath="$PROJECT_DIR$/bandit.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/demand_gen.py" beforeDir="false" afterPath="$PROJECT_DIR$/demand_gen.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/log/IDRQN_reward_log_2019-04-20 18-06-01.csv" beforeDir="false" afterPath="$PROJECT_DIR$/log/IDRQN_reward_log_2019-04-20 18-06-01.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/new_IDRQN_main.py" beforeDir="false" afterPath="$PROJECT_DIR$/new_IDRQN_main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Model_large/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Model_large/DRQN_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/DRQN_agent.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Model_large/bandit.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/bandit.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Model_large/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Model_large/demand_gen.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/demand_gen.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Model_large/simulation_input.dat" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/simulation_input.dat" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Model_large/system_tracker.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/system_tracker.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Model_large/taxi_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/taxi_env.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Model_large/new_IDRQN_main.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/new_IDRQN_main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Model_large/temp_record.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/temp_record.txt" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -22,11 +23,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/new_IDRQN_main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="801">
-              <caret line="362" column="47" selection-start-line="362" selection-start-column="47" selection-end-line="362" selection-end-column="47" />
+            <state relative-caret-position="429">
+              <caret line="318" column="37" lean-forward="true" selection-start-line="318" selection-start-column="37" selection-end-line="318" selection-end-column="37" />
             </state>
           </provider>
         </entry>
@@ -34,8 +35,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/bandit.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="589">
-              <caret line="61" selection-start-line="61" selection-end-line="61" />
+            <state relative-caret-position="584">
+              <caret line="107" column="46" selection-start-line="107" selection-start-column="25" selection-end-line="107" selection-end-column="46" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -46,8 +47,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/network.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="684">
-              <caret line="150" column="67" selection-start-line="150" selection-start-column="67" selection-end-line="150" selection-end-column="67" />
+            <state relative-caret-position="437">
+              <caret line="137" column="22" lean-forward="true" selection-start-line="137" selection-start-column="22" selection-end-line="137" selection-end-column="22" />
               <folding>
                 <element signature="e#0#23#0" expanded="true" />
               </folding>
@@ -58,8 +59,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/DRQN_agent.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-57">
-              <caret line="348" column="23" selection-start-line="348" selection-start-column="23" selection-end-line="348" selection-end-column="23" />
+            <state relative-caret-position="-3976">
+              <caret line="176" column="55" lean-forward="true" selection-start-line="176" selection-start-column="55" selection-end-line="176" selection-end-column="55" />
               <folding>
                 <element signature="e#88#97#0" expanded="true" />
               </folding>
@@ -71,7 +72,7 @@
         <entry file="file://$PROJECT_DIR$/demand_gen.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="353">
-              <caret line="37" lean-forward="true" selection-start-line="37" selection-end-line="37" />
+              <caret line="37" selection-start-line="37" selection-end-line="37" />
               <folding>
                 <element signature="e#0#18#0" expanded="true" />
               </folding>
@@ -82,7 +83,7 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/taxi_env.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="2082">
+            <state relative-caret-position="866">
               <caret line="334" column="31" selection-start-line="334" selection-start-column="31" selection-end-line="334" selection-end-column="31" />
               <folding>
                 <element signature="e#250#268#0" expanded="true" />
@@ -94,17 +95,17 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/system_tracker.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-1167">
+            <state relative-caret-position="19">
               <caret line="70" column="28" selection-start-line="70" selection-start-column="28" selection-end-line="70" selection-end-column="28" />
             </state>
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/config.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="475">
-              <caret line="25" column="19" selection-start-line="25" selection-start-column="19" selection-end-line="25" selection-end-column="19" />
+            <state relative-caret-position="665">
+              <caret line="35" column="50" lean-forward="true" selection-start-line="35" selection-start-column="50" selection-end-line="35" selection-end-column="50" />
             </state>
           </provider>
         </entry>
@@ -121,7 +122,7 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/GREEDY_main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1368">
+            <state relative-caret-position="866">
               <caret line="85" column="22" selection-start-line="85" selection-start-column="22" selection-end-line="85" selection-end-column="22" />
             </state>
           </provider>
@@ -160,8 +161,8 @@
       <find>bandit_buffer</find>
       <find>i</find>
       <find>bandit</find>
-      <find>global_bandit_buffer</find>
       <find>Da</find>
+      <find>global_bandit_buffer</find>
     </findStrings>
     <replaceStrings>
       <replace>5*</replace>
@@ -180,15 +181,15 @@
         <option value="$PROJECT_DIR$/online_linucb.py" />
         <option value="$PROJECT_DIR$/system_tracker.py" />
         <option value="$PROJECT_DIR$/taxi_env.py" />
+        <option value="$PROJECT_DIR$/demand_gen.py" />
         <option value="$PROJECT_DIR$/DRQN_agent.py" />
+        <option value="$PROJECT_DIR$/config.py" />
         <option value="$PROJECT_DIR$/bandit.py" />
         <option value="$PROJECT_DIR$/new_IDRQN_main.py" />
-        <option value="$PROJECT_DIR$/demand_gen.py" />
-        <option value="$PROJECT_DIR$/config.py" />
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="6">
+  <component name="ProjectFrameBounds">
     <option name="x" value="1720" />
     <option name="width" value="1720" />
     <option name="height" value="1400" />
@@ -199,6 +200,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -210,7 +212,6 @@
           <select />
         </subPane>
       </pane>
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -367,22 +368,22 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-8" y="-8" width="3456" height="1416" extended-state="6" />
+    <frame x="1720" y="0" width="1720" height="1400" extended-state="0" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.12258631" />
+      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.24910821" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.49970743" visible="true" weight="0.25643024" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" sideWeight="0.8234245" visible="true" weight="0.2596685" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.4" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Version Control" order="7" />
       <window_info anchor="bottom" id="Terminal" order="8" />
-      <window_info anchor="bottom" id="Event Log" order="9" sideWeight="0.50029254" side_tool="true" visible="true" weight="0.25643024" />
+      <window_info anchor="bottom" id="Event Log" order="9" sideWeight="0.17657551" side_tool="true" visible="true" weight="0.2596685" />
       <window_info anchor="bottom" id="Python Console" order="10" />
       <window_info anchor="right" id="Commander" order="0" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
@@ -409,7 +410,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/GREEDY_main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1368">
+        <state relative-caret-position="866">
           <caret line="85" column="22" selection-start-line="85" selection-start-column="22" selection-end-line="85" selection-end-column="22" />
         </state>
       </provider>
@@ -423,24 +424,14 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/system_tracker.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1167">
+        <state relative-caret-position="19">
           <caret line="70" column="28" selection-start-line="70" selection-start-column="28" selection-end-line="70" selection-end-column="28" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/DRQN_agent.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-57">
-          <caret line="348" column="23" selection-start-line="348" selection-start-column="23" selection-end-line="348" selection-end-column="23" />
-          <folding>
-            <element signature="e#88#97#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/taxi_env.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2082">
+        <state relative-caret-position="866">
           <caret line="334" column="31" selection-start-line="334" selection-start-column="31" selection-end-line="334" selection-end-column="31" />
           <folding>
             <element signature="e#250#268#0" expanded="true" />
@@ -448,37 +439,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/network.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="684">
-          <caret line="150" column="67" selection-start-line="150" selection-start-column="67" selection-end-line="150" selection-end-column="67" />
-          <folding>
-            <element signature="e#0#23#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/new_IDRQN_main.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="801">
-          <caret line="362" column="47" selection-start-line="362" selection-start-column="47" selection-end-line="362" selection-end-column="47" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/bandit.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="589">
-          <caret line="61" selection-start-line="61" selection-end-line="61" />
-          <folding>
-            <element signature="e#0#18#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/demand_gen.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="353">
-          <caret line="37" lean-forward="true" selection-start-line="37" selection-end-line="37" />
+          <caret line="37" selection-start-line="37" selection-end-line="37" />
           <folding>
             <element signature="e#0#18#0" expanded="true" />
           </folding>
@@ -487,8 +451,45 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/config.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="475">
-          <caret line="25" column="19" selection-start-line="25" selection-start-column="19" selection-end-line="25" selection-end-column="19" />
+        <state relative-caret-position="665">
+          <caret line="35" column="50" lean-forward="true" selection-start-line="35" selection-start-column="50" selection-end-line="35" selection-end-column="50" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/network.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="437">
+          <caret line="137" column="22" lean-forward="true" selection-start-line="137" selection-start-column="22" selection-end-line="137" selection-end-column="22" />
+          <folding>
+            <element signature="e#0#23#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/DRQN_agent.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-3976">
+          <caret line="176" column="55" lean-forward="true" selection-start-line="176" selection-start-column="55" selection-end-line="176" selection-end-column="55" />
+          <folding>
+            <element signature="e#88#97#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/bandit.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="584">
+          <caret line="107" column="46" selection-start-line="107" selection-start-column="25" selection-end-line="107" selection-end-column="46" />
+          <folding>
+            <element signature="e#0#18#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/new_IDRQN_main.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="429">
+          <caret line="318" column="37" lean-forward="true" selection-start-line="318" selection-start-column="37" selection-end-line="318" selection-end-column="37" />
         </state>
       </provider>
     </entry>

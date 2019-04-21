@@ -2,7 +2,7 @@
 
 
 TRAIN_CONFIG = {
-    'batch_size':32,
+    'batch_size':64,
     'trace_length': 5,
     'update_freq': 30,
     'lstm_unit':256,
