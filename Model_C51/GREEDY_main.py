@@ -55,7 +55,7 @@ np.random.seed(rng_seed)
 
 # Initialize the system tracker
 sys_tracker = system_tracker()
-sys_tracker.initialize(distance, travel_time, arrival_rate, int(taxi_input*N_station), N_station, num_episodes, max_epLength)
+sys_tracker.initialize(config, distance, travel_time, arrival_rate, int(taxi_input*N_station), N_station, num_episodes, max_epLength)
 
 #------------------Train the network-----------------------
 
