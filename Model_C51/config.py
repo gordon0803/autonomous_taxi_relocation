@@ -2,12 +2,12 @@
 
 
 TRAIN_CONFIG = {
-    'batch_size':64,
+    'batch_size':32,
     'trace_length': 5,
     'update_freq': 30,
     'lstm_unit':256,
     'y': .99,
-    'elimination_threshold':0.2,
+    'elimination_threshold':0.5,
     'startE':1,
     'endE':0.05,
     'anneling_steps':250*1000,

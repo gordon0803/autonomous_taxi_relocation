@@ -396,7 +396,7 @@ class taxi_simulator():
                 # self.score[i]=min(self.score[i],1) #bound to [0,1]
                 self.score[i]=1
 
-            score.append(self.score[i])
+            self.score[i]=len(self.passenger_qtime[i])
 
 
 

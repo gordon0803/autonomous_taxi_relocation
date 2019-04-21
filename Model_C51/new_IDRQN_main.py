@@ -214,7 +214,6 @@ with tf.Session(config=config1) as sess:
                 #predict_score = sess.run(linear_model.linear_Yh, feed_dict={linear_model.linear_X: [feature]})
                 predict_score=linucb_agent.return_upper_bound(feature)
                 predict_score=predict_score*exp_dist/distance
-                print(predict_score)
                 rand_num=np.random.rand(1)
                 for station in range(N_station):
                     if env.taxi_in_q[station]:
