@@ -7,7 +7,7 @@ TRAIN_CONFIG = {
     'update_freq': 30,
     'lstm_unit':256,
     'y': .99,
-    'elimination_threshold':0.5,
+    'elimination_threshold':0.2,
     'startE':1,
     'endE':0.05,
     'anneling_steps':250*1000,
