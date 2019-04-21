@@ -50,7 +50,7 @@ for t in range(len(OD_mat)):
         else:
             exp_dist[t].append(0)
 
-taxi_input = 40
+taxi_input = 60
 
 
 simulation_input['N_station'] = N_station;

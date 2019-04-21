@@ -49,7 +49,7 @@ class linucb_agent():
         rewards=np.vstack(rewards)
         features_exp=np.tile(features,[self.n_action,1]) #expand the features map
         actions_exp=actions.T.flatten()
-        seq_id=np.tile([i for i in range(len(features))],self.n_action)
+        seq_id=np.tile(range(len(features)),self.n_action)
         rewards_exp=rewards[seq_id,actions_exp]
 
         for j in range(self.n_action):

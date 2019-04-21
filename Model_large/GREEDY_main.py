@@ -76,9 +76,10 @@ total_steps = 0
 stand_agent = []
 # targetOps=[]
 
+print('Initialize greedy agent')
 for station in range(N_station):
-	stand_agent.append(GREEDY_agent.greedy_agent(str(station), N_station, loc_neighbor[station],int(taxi_input*N_station)))
-
+    stand_agent.append(GREEDY_agent.greedy_agent(station, N_station, loc_neighbor[station],int(taxi_input*N_station)))
+print('Greedy agent initialized')
 
 for i in range(num_episodes):
     episodeBuffer = []
@@ -99,7 +100,6 @@ for i in range(num_episodes):
 
     # The Greedy movement
     while j < max_epLength:
-
        j += 1
        a=[-1]*N_station
        # for all the stations, act greedily
@@ -111,8 +111,9 @@ for i in range(num_episodes):
                a[station] = a1  # action performed by rational
 
        elif greedy_option=="inventory":  #use softmax
+           gap=stand_agent[0].measure_inventory(s)
            for station in range(N_station):
-               a1=stand_agent[station].predict_inventory(s)
+               a1=stand_agent[station].predict_inventory(s,gap)
                a[station] = a1  # action performed by rational
 
        else: #use max gap

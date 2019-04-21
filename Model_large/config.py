@@ -2,7 +2,7 @@
 import demand_gen
 
 TRAIN_CONFIG = {
-    'batch_size':64,
+    'batch_size':32,
     'trace_length': 5,
     'update_freq': 150,
     'lstm_unit':512,
