@@ -17,7 +17,7 @@ from system_tracker import system_tracker
 # config.gpu_options.allow_growth = True
 # session = tf.Session(config=config)
 
-greedy_option = "greedy"
+greedy_option = "inventory"
 #------------------Parameter setting-----------------------
 with open('simulation_input.dat','rb') as fp:
     simulation_input=pickle.load(fp)
@@ -79,7 +79,7 @@ stand_agent = []
 # targetOps=[]
 
 for station in range(N_station):
-	stand_agent.append(GREEDY_agent.greedy_agent(str(station), N_station, loc_neighbor[station],int(taxi_input*N_station)))
+    stand_agent.append(GREEDY_agent.greedy_agent(station, N_station, loc_neighbor[station],int(taxi_input*N_station)))
 
 
 for i in range(num_episodes):
@@ -93,7 +93,7 @@ for i in range(num_episodes):
     sP, tempr, featurep,score,tr2 = env.get_state()
     # process the state into a list
     s = network.processState(sP, N_station)
-
+    threshold = np.zeros(N_station)
     rAll = 0
     j = 0
     total_serve = 0
@@ -113,9 +113,11 @@ for i in range(num_episodes):
                a[station] = a1  # action performed by rational
 
        elif greedy_option=="inventory":  #use softmax
+           gap=stand_agent[0].measure_inventory(s)
            for station in range(N_station):
-               a1=stand_agent[station].predict_inventory(s)
+               a1=stand_agent[station].predict_inventory(gap,threshold)
                a[station] = a1  # action performed by rational
+           threshold = stand_agent[0].meansure_threshold(s)
 
        else: #use max gap
            for station in range(N_station):

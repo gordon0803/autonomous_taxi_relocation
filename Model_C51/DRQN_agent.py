@@ -34,7 +34,7 @@ class drqn_agent_efficient():
 
 
         #QR params
-        self.N=100; #number of quantiles
+        self.N=20; #number of quantiles
         self.k=1; #huber loss
         self.gamma=config.TRAIN_CONFIG['y']
         self.conf=1
@@ -60,6 +60,7 @@ class drqn_agent_efficient():
         #place holders.
         #for current observations
         self.scalarInput = tf.placeholder(shape=[None, N_station * N_station * 5], dtype=tf.float32,name='main_input')
+        self.target_scalarInput= tf.placeholder(shape=[None, N_station * N_station * 5], dtype=tf.float32,name='target_input')
         self.trainLength = tf.placeholder(dtype=tf.int32, name= 'trainlength')
         self.batch_size = tf.placeholder(dtype=tf.int32, shape=[], name= 'batchsize')
         self.targetQ=[]
@@ -67,6 +68,7 @@ class drqn_agent_efficient():
         self.rewards=[]
         self.station_score=[]
         self.predict_score = []
+        self.rnn_holder=tf.placeholder(shape=[None, self.lstm_units], dtype=tf.float32,name='main_input')
 
         for i in range(N_station):
             targetQ=tf.placeholder(shape=[None,self.N], dtype=tf.float32)
@@ -78,13 +80,6 @@ class drqn_agent_efficient():
             self.rewards.append(rewards)
             self.predict_score.append(predict_score)
 
-        #nets
-        # self.conv1=[]
-        # self.conv2=[]
-        # self.conv3=[]
-        # self.conv4=[]
-        # self.rnn=[]
-
         #ops.
         self.mainQout=[]
         self.targetQout=[]
@@ -94,82 +89,39 @@ class drqn_agent_efficient():
 
 
     def build_main(self):
-
         for i in range(self.N_station):
-            # The output from the recurrent player is then split into separate Value and Advantage streams
-            myScope = 'DRQN_main_' + str(i)
-            rnn=self.main_rnn(self.scalarInput)
-            streamA, streamV = tf.split(rnn, 2, 1, name=myScope + '_split_streamAV')
-            AW = tf.Variable(tf.random_normal([self.lstm_units // 2, (self.N_station)*self.N]), name=myScope + 'AW')  # action +1, with the last action being station without any vehicles
-
-            VW = tf.Variable(tf.random_normal([self.lstm_units //2, 1]), name=myScope + 'VW')
-
-            Advantage = tf.matmul(streamA, AW, name=myScope + '_matmulAdvantage')
-            Value = tf.matmul(streamV, VW, name=myScope + '_matmulValue')
-
-            Qt = Value + tf.subtract(Advantage, tf.reduce_mean(Advantage, axis=1, keepdims=True),name=myScope + '_unshaped_Qout')
-            Qout=tf.reshape(Qt, [-1, self.N_station, self.N])  #reshape it to N_station by self.atoms dimension
-            self.mainQout.append(Qout)
-
-
-            # q=tf.math.square(tf.reduce_mean(Qout,axis=-1))
-            # q2=tf.reduce_mean(tf.math.square(Qout),axis=-1)
-            # std=tf.math.sqrt(tf.subtract(q2,q))
-            # mean=tf.reduce_mean(Qout,axis=-1)
-            # median=tf.contrib.distributions.percentile(Qout, 80.0,axis=-1)
-
-            q = tf.reduce_mean(tf.sort(Qout, axis=-1) * self.quantile_mask, axis=-1)
-
-            station_vec=tf.concat([tf.ones(i),tf.zeros(1),tf.ones(self.N_station-i-1)],axis=0)
-            station_score=tf.multiply(self.predict_score[i],station_vec)  #mark self as 0
-            self.station_score.append(station_score)
-
-            #predict based on the 95% confidence interval
-            #predict = tf.argmax(tf.subtract(tf.add(mean,tf.scalar_mul(self.conf,std)),self.station_score[i]), 1, name=myScope + '_prediction')
-
-            predict=tf.argmax(tf.subtract(q,self.station_score[i]), 1, name=myScope + '_prediction')
-            self.mainPredict.append(predict)
+                # The output from the recurrent player is then split into separate Value and Advantage streams
+                myScope = str(i)
+                rnn=self.main_rnn(self.scalarInput)
+                self.main_rnn_value=rnn
+                Qout=self.main_eval(rnn,i)
+                self.mainQout.append(Qout)
+                #for prediction
+                Qout2=self.main_eval(self.rnn_holder,i)
+                #
+                q = tf.reduce_mean(tf.sort(Qout2, axis=-1) * self.quantile_mask, axis=-1)
+                station_vec = tf.concat([tf.ones(i), tf.zeros(1), tf.ones(self.N_station - i - 1)], axis=0)
+                station_score = tf.multiply(self.predict_score[i], station_vec)  # mark self as 0
+                self.station_score.append(station_score)
+                # predict based on the 95% confidence interval
+                # predict = tf.argmax(tf.subtract(tf.add(mean,tf.scalar_mul(self.conf,std)),self.station_score[i]), 1, name=myScope + '_prediction')
+                predict = tf.argmax(tf.subtract(q, self.station_score[i]), 1, name=myScope + '_prediction')
+                self.mainPredict.append(predict)
 
     def build_target(self):
         ##construct the main network
-        for i in range(self.N_station):
-            myScope = 'DRQN_target_' + str(i)
-            rnn=self.target_rnn(self.scalarInput)
-            # The output from the recurrent player is then split into separate Value and Advantage streams
-            streamA, streamV = tf.split(rnn, 2, 1, name=myScope + '_split_streamAV')
-            AW = tf.Variable(tf.random_normal([self.lstm_units // 2, (self.N_station) * self.N]),
-                             name=myScope + 'AW')  # action +1, with the last action being station without any vehicles
-
-            VW = tf.Variable(tf.random_normal([self.lstm_units // 2, 1]), name=myScope + 'VW')
-
-            Advantage = tf.matmul(streamA, AW, name=myScope + '_matmulAdvantage')
-            Value = tf.matmul(streamV, VW, name=myScope + '_matmulValue')
-
-            Qt = Value + tf.subtract(Advantage, tf.reduce_mean(Advantage, axis=1, keepdims=True),name=myScope + '_unshaped_Qout')
-            Qout=tf.reshape(Qt, [-1, self.N_station, self.N])  #reshape it to N_station by self.atoms dimension
-            self.targetQout.append(Qout)
+            for i in range(self.N_station):
+                rnn=self.target_rnn(self.scalarInput)
+                Qout=self.target_eval(rnn,i)
+                self.targetQout.append(Qout)
 
 
     def build_train(self):
-        maskA = tf.ones([self.batch_size, self.train_length//2])  # Mask first 20 records are shown to have the best results
-        maskB = tf.ones([self.batch_size, self.train_length//2])
         mask = tf.ones([self.batch_size, self.train_length])
-
         self.mask = tf.reshape(mask, [-1])
         self.trainer = tf.train.AdamOptimizer(learning_rate=0.001, name='Adam_opt')
         for i in range(self.N_station):
-            myScope = 'DRQN_main_'+str(i)
-            # Then combine them together to get our final Q-values.
-            # Below we obtain the loss by taking the sum of squares difference between the target and prediction Q values.
-            #main_q =tf.math.square(tf.reduce_mean(self.mainQout[i], axis=-1))
-            #main_q2=tf.reduce_mean(tf.math.square(self.mainQout[i]),axis=-1)
-            mean=tf.reduce_mean(self.mainQout[i],axis=-1)
-            # median = tf.contrib.distributions.percentile(self.mainQout[i], 80.0, axis=-1)
-            # main_q = tf.subtract(median, self.station_score[i])
-            # #std=tf.math.sqrt(tf.math.subtract(main_q2,main_q))
-            # #main_q = tf.subtract(tf.add(mean,tf.scalar_mul(self.conf,std)), self.station_score[i])
-            # main_act = tf.argmax(main_q, axis=-1)
-
+            myScope = 'nothing'+str(i)
             q = tf.reduce_mean(tf.sort(self.mainQout[i], axis=-1) * self.quantile_mask, axis=-1)
             main_q = tf.subtract(q, self.station_score[i])
             main_act = tf.argmax(main_q, axis=-1)
@@ -195,9 +147,9 @@ class drqn_agent_efficient():
         self.build_main()
         self.build_target()
         self.build_train()
-        self.main_trainables = tf.trainable_variables(scope='DRQN_main_')
+        # self.main_trainables = tf.trainable_variables(scope='DRQN_main_')
         self.trainables = tf.trainable_variables(scope='DRQN')
-        self.target_trainables = tf.trainable_variables(scope='DRQN_target')
+        # self.target_trainables = tf.trainable_variables(scope='DRQN_target')
 
         # store the name and initial values for target network
         self.targetOps = network.updateTargetGraph(self.trainables, self.tau)
@@ -212,69 +164,99 @@ class drqn_agent_efficient():
 
 
     def main_rnn(self,input):
-        with tf.variable_scope('DRQN_main',reuse=tf.AUTO_REUSE):
-            imageIn = tf.reshape(input, shape=[-1, self.N_station, self.N_station, 5])
-            input_conv = tf.pad(imageIn, [[0, 0], [2, 2], [2, 2], [0, 0]], "REFLECT")  # reflect padding!
+        with tf.variable_scope('DRQN',reuse=tf.AUTO_REUSE):
+            myScope = 'Main_'
+            imageIn = tf.reshape(input, shape=[-1, self.N_station, self.N_station, 5],name=myScope+'in1')
+            input_conv = tf.pad(imageIn, [[0, 0], [2, 2], [2, 2], [0, 0]], "REFLECT",name=myScope+'in2')  # reflect padding!
             conv1 = tf.nn.relu(tf.layers.conv2d( \
                 inputs=input_conv, filters=16, \
-                kernel_size=[4, 4], strides=[2, 2], padding='VALID', \
-                name='_net_conv1'))
+                kernel_size=[5, 5], strides=[2, 2], padding='VALID', \
+                name=myScope+'_net_conv1'))
             conv2 = tf.nn.relu(tf.layers.conv2d( \
                 inputs=conv1, filters=32, \
-                kernel_size=[2, 2], strides=[1, 1], padding='VALID', \
-                name='_net_conv2'))
-            convFlat = tf.reshape(slim.flatten(conv2), [self.batch_size, self.trainLength, self.h_size],name='_convlution_flattern')
+                kernel_size=[3, 3], strides=[1, 1], padding='VALID', \
+                name=myScope+'_net_conv2'))
+            convFlat = tf.reshape(slim.flatten(conv2), [self.batch_size, self.trainLength, self.h_size],
+                                  name=myScope+'_convlution_flattern')
             if self.use_gpu:
                 print('Using CudnnLSTM')
-                lstm = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1, num_units=self.lstm_units, name='_lstm')
+                lstm = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1, num_units=self.lstm_units, name=myScope+'_lstm')
                 rnn, rnn_state = lstm(inputs=convFlat)
             else:
                 print('Using LSTMfused')
-                lstm = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.lstm_units, name='_lstm')
+                lstm = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.lstm_units, name=myScope+'_lstm')
                 rnn, rnn_state = lstm(inputs=convFlat, dtype=tf.float32)
 
-            rnn = tf.reshape(rnn, shape=[-1, self.lstm_units], name= '_reshapeRNN_out')
+            rnn = tf.reshape(rnn, shape=[-1, self.lstm_units], name= myScope+'_reshapeRNN_out')
 
-            return rnn
+        return rnn
+
+    def main_eval(self,rnn,station):
+        with tf.variable_scope('DRQN_main_eval', reuse=tf.AUTO_REUSE) as scope:
+            myScope='Main_'+str(station)
+            streamA, streamV = tf.split(rnn, 2, 1, name= '_split_streamAV'+myScope)
+
+            Advantage=tf.layers.dense(streamA,(self.N_station) * self.N,name=myScope+'AW') #advantage
+            Value = tf.layers.dense(streamV, 1, name=myScope + 'VW')  # value
+
+            Qt = Value + tf.subtract(Advantage, tf.reduce_mean(Advantage, axis=1, keepdims=True),
+                                     name= '_unshaped_Qout'+myScope)
+            Qout = tf.reshape(Qt, [-1, self.N_station, self.N])  # reshape it to N_station by self.atoms dimension
+        return Qout
+
+
 
     def target_rnn(self,input):
-        with tf.variable_scope('DRQN_target',reuse=tf.AUTO_REUSE):
-            imageIn = tf.reshape(input, shape=[-1, self.N_station, self.N_station, 5])
-            input_conv = tf.pad(imageIn, [[0, 0], [2, 2], [2, 2], [0, 0]], "REFLECT")  # reflect padding!
+        with tf.variable_scope('DRQN',reuse=tf.AUTO_REUSE):
+            myScope = 'Target_'
+            imageIn = tf.reshape(input, shape=[-1, self.N_station, self.N_station, 5],name=myScope+'in1')
+            input_conv = tf.pad(imageIn, [[0, 0], [2, 2], [2, 2], [0, 0]], "REFLECT",name=myScope+'in2')  # reflect padding!
             conv1 = tf.nn.relu(tf.layers.conv2d( \
                 inputs=input_conv, filters=16, \
-                kernel_size=[4, 4], strides=[2, 2], padding='VALID', \
-                name='_net_conv1'))
+                kernel_size=[5, 5], strides=[2, 2], padding='VALID', \
+                name=myScope+'_net_conv1'))
             conv2 = tf.nn.relu(tf.layers.conv2d( \
                 inputs=conv1, filters=32, \
-                kernel_size=[2, 2], strides=[1, 1], padding='VALID', \
-                name='_net_conv2'))
+                kernel_size=[3, 3], strides=[1, 1], padding='VALID', \
+                name=myScope+'_net_conv2'))
             convFlat = tf.reshape(slim.flatten(conv2), [self.batch_size, self.trainLength, self.h_size],
-                                  name='_convlution_flattern')
+                                  name=myScope+'_convlution_flattern')
             if self.use_gpu:
                 print('Using CudnnLSTM')
-                lstm = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1, num_units=self.lstm_units, name='_lstm')
+                lstm = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1, num_units=self.lstm_units, name=myScope+'_lstm')
                 rnn, rnn_state = lstm(inputs=convFlat)
             else:
                 print('Using LSTMfused')
-                lstm = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.lstm_units, name='_lstm')
+                lstm = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.lstm_units, name=myScope+'_lstm')
                 rnn, rnn_state = lstm(inputs=convFlat, dtype=tf.float32)
 
-            rnn = tf.reshape(rnn, shape=[-1, self.lstm_units], name= '_reshapeRNN_out')
+            rnn = tf.reshape(rnn, shape=[-1, self.lstm_units], name= myScope+'_reshapeRNN_out')
 
-            return rnn
+        return rnn
 
-    def predict(self, s,predict_score,e,station,threshold,rng):
+    def target_eval(self,rnn,station):
+        with tf.variable_scope('DRQN_target_eval', reuse=tf.AUTO_REUSE) as scope:
+            myScope='Target_'+str(station)
+            streamA, streamV = tf.split(rnn, 2, 1, name= '_split_streamAV'+myScope)
+
+            Advantage=tf.layers.dense(streamA,(self.N_station) * self.N,name=myScope+'AW') #advantage
+            Value = tf.layers.dense(streamV, 1, name=myScope + 'VW')  # value
+
+            Qt = Value + tf.subtract(Advantage, tf.reduce_mean(Advantage, axis=1, keepdims=True),
+                                     name= '_unshaped_Qout'+myScope)
+            Qout = tf.reshape(Qt, [-1, self.N_station, self.N])  # reshape it to N_station by self.atoms dimension
+        return Qout
+
+    def predict(self, rnn,predict_score,e,station,threshold,rng,valid,invalid):
         # make the prediction
-        legible = predict_score >= threshold
-        legible[station]=True
+        valid[station]=True
 
        # print(self.conf)
         if rng<e: #epsilon greedy
             if e==1:
                 action=np.random.randint(len(predict_score))
             else:
-                idx=[i for i, x in enumerate(legible) if x]
+                idx=[i for i, x in enumerate(valid) if x]
                 if station not in idx:
                     idx.append(station)
                 action=np.random.choice(idx)
@@ -282,16 +264,12 @@ class drqn_agent_efficient():
         else:
             #get the adjusted predict score
             #print(predict_score)
-            adj_predict=predict_score
-            a=adj_predict<threshold
-            b=adj_predict>=threshold
-
             # if sum(b)<=2:
             #     b=adj_predict.argsort()[-3:][::-1]
             # print('Feasible Solution:',sum(b), 'Station ID:',station)
-            adj_predict[a]=1e4
-            adj_predict[b]=0;
-            Q= self.sess.run(self.mainPredict[station], feed_dict={self.scalarInput: [s], self.trainLength: 1, self.batch_size: 1,self.predict_score[station]:[adj_predict]})
+            predict_score[invalid]=1e4
+            predict_score[valid]=0;
+            Q= self.sess.run(self.mainPredict[station], feed_dict={self.rnn_holder: rnn, self.predict_score[station]:[predict_score]})
             action=Q[0]
 
         return action

@@ -66,7 +66,7 @@ rng_seed=config.TRAIN_CONFIG['random_seed']
 np.random.seed(rng_seed)
 
 
-tau = 0.01
+tau = 0.1
 
 # --------------Simulation initialization
 sys_tracker = system_tracker()
@@ -123,22 +123,22 @@ with tf.Session(config=config1) as sess:
     # writer.close()1
     sess.run(global_init)
 
-    Qp_in=[]
-    Qp_value_in=[]
-    Q1_in=[]
-    Q2_in=[]
-    Q_train=[]
-    Q_input_dict = dict()
-    Q_train_dict = dict()
-    Qp_input_dict=dict()
-    for station in range(N_station):
-        Qp_in.append(agent.mainPredict[station])
-        Qp_value_in.append(agent.mainQout[station])
-        Qp_input_dict[agent.trainLength] = 1
-        Qp_input_dict[agent.batch_size] = 1
-        Q1_in.append(agent.targetZ[station])
-        Q2_in.append(agent.targetQout[station])
-        Q_train.append(agent.updateModel[station])
+    # Qp_in=[]
+    # Qp_value_in=[]
+    # Q1_in=[]
+    # Q2_in=[]
+    # Q_train=[]
+    # Q_input_dict = dict()
+    # Q_train_dict = dict()
+    # Qp_input_dict=dict()
+    # for station in range(N_station):
+    #     Qp_in.append(agent.mainPredict[station])
+    #     Qp_value_in.append(agent.mainQout[station])
+    #     Qp_input_dict[agent.trainLength] = 1
+    #     Qp_input_dict[agent.batch_size] = 1
+    #     Q1_in.append(agent.targetZ[station])
+    #     Q2_in.append(agent.targetQout[station])
+    #     Q_train.append(agent.updateModel[station])
 
     for i in range(num_episodes):
         global_epi_buffer=[]
@@ -214,10 +214,16 @@ with tf.Session(config=config1) as sess:
                 #predict_score = sess.run(linear_model.linear_Yh, feed_dict={linear_model.linear_X: [feature]})
                 predict_score=linucb_agent.return_upper_bound(feature)
                 predict_score=predict_score*exp_dist/distance
+                invalid=predict_score<e_threshold
+                valid=predict_score>=e_threshold
                 rand_num=np.random.rand(1)
+                if rand_num<e:
+                    rnn_value=0
+                else:
+                    rnn_value=sess.run(agent.main_rnn_value,feed_dict={agent.scalarInput: [s], agent.trainLength: 1, agent.batch_size: 1})
                 for station in range(N_station):
                     if env.taxi_in_q[station]:
-                        a1 = agent.predict(s,predict_score[station,:],e,station,e_threshold,rand_num)
+                        a1 = agent.predict(rnn_value,predict_score[station,:],e,station,e_threshold,rand_num,valid[station,:],invalid[station,:])
                         a[station] = a1  # action performed by DRQN
                         if a[station] == N_station:
                             a[station] = station

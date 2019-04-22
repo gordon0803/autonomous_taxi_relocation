@@ -4,10 +4,10 @@ import demand_gen
 TRAIN_CONFIG = {
     'batch_size':32,
     'trace_length': 5,
-    'update_freq': 150,
-    'lstm_unit':512,
+    'update_freq': 140,
+    'lstm_unit':256,
     'y': .99,
-    'elimination_threshold':0.3,
+    'elimination_threshold':0.5,
     'startE':1,
     'endE':0.05,
     'anneling_steps':250*2880,
@@ -17,7 +17,7 @@ TRAIN_CONFIG = {
     'load_model':False,
     'warmup_time':-1,
     'model_path':'./drqn',
-    'h_size':2592, #The size of the final convolutional layer before splitting it into Advantage and Value streams.
+    'h_size':512, #The size of the final convolutional layer before splitting it into Advantage and Value streams.
     'max_epLength':2880, #The max allowed length of our episode.
     'pre_train_steps':20000, #How many steps of random actions before traning begins
     'softmax_action':False, #use softmax or not

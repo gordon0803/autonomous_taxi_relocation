@@ -17,7 +17,7 @@ TRAIN_CONFIG = {
     'load_model':False,
     'warmup_time':-1,
     'model_path':'./drqn',
-    'h_size':800, #The size of the final convolutional layer before splitting it into Advantage and Value streams.
+    'h_size':288, #The size of the final convolutional layer before splitting it into Advantage and Value streams.
     'max_epLength':1000, #The max allowed length of our episode.
     'pre_train_steps':20000, #How many steps of random actions before traning begins
     'softmax_action':False, #use softmax or not

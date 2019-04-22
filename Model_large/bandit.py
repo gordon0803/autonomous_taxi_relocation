@@ -44,6 +44,8 @@ class linucb_agent():
          #   self.ba[i]=gamma*self.ba[i]
         self.round+=len(rewards) #number of rounds the bandit has been played
 
+
+        t1=time.time()
         features=np.vstack(features)
         actions=np.vstack(actions)
         rewards=np.vstack(rewards)

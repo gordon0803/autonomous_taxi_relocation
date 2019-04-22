@@ -67,7 +67,7 @@ rng_seed=config.TRAIN_CONFIG['random_seed']
 np.random.seed(rng_seed)
 
 
-tau = 0.01
+tau = 0.1
 
 # --------------Simulation initialization
 sys_tracker = system_tracker()
@@ -216,11 +216,17 @@ with tf.Session(config=config1) as sess:
             else:  # use e-greedy
                 #predict_score = sess.run(linear_model.linear_Yh, feed_dict={linear_model.linear_X: [feature]})
                 predict_score=linucb_agent.return_upper_bound(feature)
-                predict_score=(predict_score*exp_dist[hour])/distance
+                predict_score=predict_score*exp_dist[hour]/distance
+                invalid=predict_score<e_threshold
+                valid=predict_score>=e_threshold
                 rand_num=np.random.rand(1)
+                if rand_num<e:
+                    rnn_value=0
+                else:
+                    rnn_value=sess.run(agent.main_rnn_value,feed_dict={agent.scalarInput: [s], agent.trainLength: 1, agent.batch_size: 1})
                 for station in range(N_station):
                     if env.taxi_in_q[station]:
-                        a1 = agent.predict(s,predict_score[station,:],e,station,e_threshold,rand_num)
+                        a1 = agent.predict(rnn_value,predict_score[station,:],e,station,e_threshold,rand_num,valid[station,:],invalid[station,:])
                         a[station] = a1  # action performed by DRQN
                         if a[station] == N_station:
                             a[station] = station
@@ -294,7 +300,6 @@ with tf.Session(config=config1) as sess:
                 # predict_in[:,:-1]=train_predict_score;
                     # print('LINUCB predict time:', time.time() - t1)
                     #get targetQ
-                    t1=time.time()
 
                     trainBatch_list = [exp_replay.sample(batch_size, trace_length) for st in range(N_station)]
                     # train_feature=np.concatenate(([trainBatch_list[st][:,6] for st in range(N_station)]),axis=0)
@@ -314,12 +319,16 @@ with tf.Session(config=config1) as sess:
                         tp[af] = 100
                         tp[bf] = 0
                         tp[:, station] = 0
+
+                        t1=time.time()
                         # train input
                         # Q_input_dict[agent.predict_score[station]] = tp
                         # Q_input_dict[agent.rewards[station]] = tr
                         # Q_train_dict[agent.rewards[station]] = tr
                         # Q_train_dict[agent.actions[station]] = t_action
                         tz=sess.run(agent.targetZ[station],feed_dict={agent.predict_score[station]:tp,agent.rewards[station]:tr,agent.scalarInput:np.vstack(trainBatch[:, 3]),agent.trainLength:trace_length,agent.batch_size:batch_size})
+
+                        t1=time.time()
                         #train
                         sess.run(agent.updateModel[station],feed_dict={agent.targetQ[station]:tz,agent.rewards[station]:tr,agent.actions[station]:t_action,agent.scalarInput:np.vstack(trainBatch[:, 0]),agent.trainLength:trace_length,agent.batch_size:batch_size})
 

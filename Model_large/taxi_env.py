@@ -394,10 +394,9 @@ class taxi_simulator():
             else:
                 # self.score[i]*=sigmoid(min(len(self.passenger_qtime[i]),20))
                 # self.score[i]=min(self.score[i],1) #bound to [0,1]
-                self.score[i]=1
+                self.score[i]=len(self.passenger_qtime[i])
 
-            self.score[i]=len(self.passenger_qtime[i])
-
+            score.append(self.score[i])
 
 
         return state, reward, np.array(feature),np.array(score),reward
