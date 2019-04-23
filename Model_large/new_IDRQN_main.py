@@ -17,6 +17,9 @@ import network
 import DRQN_agent
 from system_tracker import system_tracker
 import bandit
+
+from tensorflow.python.client import timeline
+
 np.set_printoptions(precision=2)
 if use_gpu == 0:
     os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
@@ -110,10 +113,14 @@ linucb_backup=bandit.linucb_agent(N_station,N_station*4)
 # this example equals target network to the original network after every few episodes
 # we may want to modify this
 
+
 with tf.Session(config=config1) as sess:
     # one DRQN per station is needed, different network requires a different scope (name)
     stand_agent = []
     # targetOps=[]
+
+    options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+    run_metadata = tf.RunMetadata()
 
     agent=DRQN_agent.drqn_agent_efficient(N_station, h_size, lstm_units,tau, sess, batch_size, trace_length,is_gpu=use_gpu)
     agent.drqn_build()
@@ -159,6 +166,10 @@ with tf.Session(config=config1) as sess:
         within_frame_reward = 0
         frame_skipping = 1
 
+        prediction_time=0
+        targetz_time=0
+        training_time=0
+
         rAll = 0
         rAll_unshape=0
         j = 0
@@ -199,6 +210,7 @@ with tf.Session(config=config1) as sess:
 
             a = [-1] * N_station
 
+            tempt=time.time()
             if config.TRAIN_CONFIG['use_linear'] == 0:  # not using action elimination
 
                 if np.random.rand(1) < e or total_steps < pre_train_steps:
@@ -220,20 +232,29 @@ with tf.Session(config=config1) as sess:
                 invalid=predict_score<e_threshold
                 valid=predict_score>=e_threshold
                 rand_num=np.random.rand(1)
-                if rand_num<e:
-                    rnn_value=0
+                if rand_num < e:
+                    rnn_value = 0
+                    all_actions = 0
                 else:
-                    rnn_value=sess.run(agent.main_rnn_value,feed_dict={agent.scalarInput: [s], agent.trainLength: 1, agent.batch_size: 1})
+                    rnn_value = sess.run(agent.main_rnn_value[0],
+                                         feed_dict={agent.scalarInput[0]: [s], agent.trainLength: 1,
+                                                    agent.batch_size: 1})
+                    Qp_input_dict[agent.rnn_holder] = rnn_value
+                    for station in range(N_station):
+                        pd = predict_score[station, :]
+                        pd[invalid[station, :]] = 1e4
+                        pd[valid[station, :]] = 0;
+                        Qp_input_dict[agent.predict_score[station]] = [pd]
+                    all_actions = sess.run(Qp_in, feed_dict=Qp_input_dict)
                 for station in range(N_station):
                     if env.taxi_in_q[station]:
-                        a1 = agent.predict(rnn_value,predict_score[station,:],e,station,e_threshold,rand_num,valid[station,:],invalid[station,:])
+                        a1 = agent.predict(rnn_value, predict_score[station, :], e, station, e_threshold, rand_num,
+                                           valid[station, :], invalid[station, :], all_actions)
                         a[station] = a1  # action performed by DRQN
                         if a[station] == N_station:
                             a[station] = station
+            prediction_time += time.time() - tempt
 
-                # if total_steps % (1000) == 0 and i > 4:
-                #     print('Available actions to choose from:',sum(predict_score>0.4),sum(predict_score>0.3),sum(predict_score>0.2),sum(predict_score>0.1))
-                #     print(predict_score)
             if config.TRAIN_CONFIG['use_tracker']:
                 sys_tracker.record(s, a)
 
@@ -302,10 +323,10 @@ with tf.Session(config=config1) as sess:
                     #get targetQ
 
                     trainBatch_list = [exp_replay.sample(batch_size, trace_length) for st in range(N_station)]
-                    # train_feature=np.concatenate(([trainBatch_list[st][:,6] for st in range(N_station)]),axis=0)
-                    # train_predict_score_list= linucb_agent.return_upper_bound_batch(train_feature)
-                    # Q_input_dict[agent.scalarInput] = np.vstack(trainBatch_list[:, 3])
-                    # Q_train_dict[agent.scalarInput] = np.vstack(trainBatch_list[:, 0])
+                    Q_train_dict[agent.trainLength] = trace_length
+                    Q_train_dict[agent.batch_size] = batch_size
+                    Q_input_dict[agent.trainLength] = trace_length
+                    Q_input_dict[agent.batch_size] = batch_size
 
                     for station in range(N_station):
                         trainBatch= trainBatch_list[station]
@@ -320,18 +341,25 @@ with tf.Session(config=config1) as sess:
                         tp[bf] = 0
                         tp[:, station] = 0
 
-                        t1=time.time()
-                        # train input
-                        # Q_input_dict[agent.predict_score[station]] = tp
-                        # Q_input_dict[agent.rewards[station]] = tr
-                        # Q_train_dict[agent.rewards[station]] = tr
-                        # Q_train_dict[agent.actions[station]] = t_action
-                        tz=sess.run(agent.targetZ[station],feed_dict={agent.predict_score[station]:tp,agent.rewards[station]:tr,agent.scalarInput:np.vstack(trainBatch[:, 3]),agent.trainLength:trace_length,agent.batch_size:batch_size})
+                        Q_input_dict[agent.scalarInput[station]] = np.vstack(trainBatch[:, 3])
+                        Q_train_dict[agent.scalarInput[station]] = np.vstack(trainBatch[:, 0])
+                        Q_input_dict[agent.predict_score[station]] = tp
+                        Q_input_dict[agent.rewards[station]] = tr
+                        Q_train_dict[agent.rewards[station]] = tr
+                        Q_train_dict[agent.actions[station]] = t_action
 
-                        t1=time.time()
-                        #train
-                        sess.run(agent.updateModel[station],feed_dict={agent.targetQ[station]:tz,agent.rewards[station]:tr,agent.actions[station]:t_action,agent.scalarInput:np.vstack(trainBatch[:, 0]),agent.trainLength:trace_length,agent.batch_size:batch_size})
+                    tempt = time.time()
+                    targetz = sess.run(Q1_in, feed_dict=Q_input_dict)
+                    targetz_time += time.time() - tempt
 
+                    for station in range(N_station):
+                        Q_train_dict[agent.targetQ[station]] = targetz[station]
+
+                    tempt = time.time()
+                    sess.run(Q_train, feed_dict=Q_train_dict)
+                    # train
+                    # sess.run(agent.updateModel[station],feed_dict={agent.targetQ[station]:tz,agent.rewards[station]:tr,agent.actions[station]:t_action,agent.scalarInput:np.vstack(trainBatch[:, 0]),agent.trainLength:trace_length,agent.batch_size:batch_size})
+                    training_time += time.time() - tempt
 
 
 
@@ -358,6 +386,8 @@ with tf.Session(config=config1) as sess:
         print('Episode:', i, ', totalreward:', rAll, ', old reward:',rAll_unshape,', total serve:', total_serve, ', total leave:', total_leave, ', total_cpu_time:',time.time()-tinit,
               ', terminal_taxi_distribution:', [len(v) for v in env.taxi_in_q], ', terminal_passenger:',
               [len(v) for v in env.passenger_qtime], e,agent.conf)
+        n_vars=len(tf.trainable_variables())
+        print('TargetZ_time:',targetz_time,', Training time:',training_time, ', Prediction time:',prediction_time,'Number of tensorflow variables',n_vars)
         reward_out.write(str(i) + ',' + str(rAll) + '\n')
 
         outf.writelines(str(i)+','+str(rAll)+','+str(total_serve)+','+str(total_leave)+'\n')
