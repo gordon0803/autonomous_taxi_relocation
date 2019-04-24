@@ -73,7 +73,7 @@ class taxi_simulator():
         self.taxi_in_q = [deque([])  for i in range(self.N)]  # taxis waiting in the queue of each station
         self.taxi_in_charge = [deque([])  for i in range(self.N)]  # taxis charging at each station
         # self.gamma_pool=np.random.gamma(10,size=500000).tolist() #maintain a pool of gamma variable of size 50000
-        self.gamma_pool=(10*np.ones(500000)).tolist()
+        self.gamma_pool=(20*np.ones(500000)).tolist()
 
         self.served_passengers = np.zeros(self.N)
         self.served_passengers_waiting_time = np.zeros(self.N)
@@ -107,7 +107,7 @@ class taxi_simulator():
         # Use -1 to denote no relocation
         # check gamma pool
         if len(self.gamma_pool) < 10000:
-            self.gamma_pool = (10*np.ones(500000)).tolist()
+            self.gamma_pool = (20*np.ones(500000)).tolist()
         
         self.current_action=[-1]*self.N
         self.clock=self.timer//120 #decide which time interval it falls into
@@ -293,7 +293,7 @@ class taxi_simulator():
         self.taxi_in_q = [deque([])  for i in range(self.N)]  # taxis waiting in the queue of each station
         self.taxi_in_charge = [deque([])  for i in range(self.N)]  # taxis charging at each station
         self.init_taxi()
-        self.gamma_pool = (10*np.ones(500000)).tolist()  # maintain a pool of gamma variable of size 50000
+        self.gamma_pool = (20*np.ones(500000)).tolist()  # maintain a pool of gamma variable of size 50000
         #current action
         self.previous_action=[-1]*self.N #no action made
         self.current_action=[-1]*self.N
