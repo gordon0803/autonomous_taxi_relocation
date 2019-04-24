@@ -8,7 +8,7 @@ import numpy as np
 import taxi_util as util
 from collections import deque
 import math
-
+from sklearn.preprocessing import normalize
 
 
 class taxi_agent():
@@ -366,11 +366,11 @@ class taxi_simulator():
 
         #all states are within 0-1, continuous value
 
-        state[:, :, 0] = passenger_gap;
-        state[:, :, 1] = taxi_in_travel;
-        state[:, :, 2] = taxi_in_relocation;
-        state[:, :, 3] = taxi_in_q;
-        state[:,:,4] = taxi_in_charge;
+        state[:, :, 0] = np.sqrt(passenger_gap);
+        state[:, :, 1] = np.sqrt(taxi_in_travel);
+        state[:, :, 2] = np.sqrt(taxi_in_relocation);
+        state[:, :, 3] = np.sqrt(taxi_in_q);
+        state[:,:,4] = np.sqrt(taxi_in_charge);
         # reward
         total_taxi_in_travel = taxi_in_travel.sum()
         total_taxi_in_relocation = taxi_in_relocation.sum()

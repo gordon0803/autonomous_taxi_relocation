@@ -2,10 +2,17 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="dad78855-d8dd-4cb5-b79d-257bd1a32af0" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DRQN_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/DRQN_agent.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/new_IDRQN_main.py" beforeDir="false" afterPath="$PROJECT_DIR$/new_IDRQN_main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/taxi_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/taxi_env.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Model_large/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Model_large/network.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/network.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Model_large/DRQN_agent.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/DRQN_agent.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Model_large/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/config.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Model_large/new_IDRQN_main.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/new_IDRQN_main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Model_large/simulation_input.dat" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/simulation_input.dat" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../Model_large/taxi_env.py" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/taxi_env.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../Model_large/temp_record.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../Model_large/temp_record.txt" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -18,8 +25,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/new_IDRQN_main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="247">
-              <caret line="298" selection-start-line="298" selection-end-line="313" selection-end-column="60" />
+            <state relative-caret-position="417">
+              <caret line="128" selection-start-line="128" selection-end-line="128" selection-end-column="41" />
             </state>
           </provider>
         </entry>
@@ -52,16 +59,16 @@
         <entry file="file://C:/ProgramData/Anaconda3/envs/tf_gpu/Lib/site-packages/numpy/core/fromnumeric.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="660">
-              <caret line="74" column="44" lean-forward="true" selection-start-line="74" selection-start-column="44" selection-end-line="74" selection-end-column="44" />
+              <caret line="74" column="44" selection-start-line="74" selection-start-column="44" selection-end-line="74" selection-end-column="44" />
             </state>
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/DRQN_agent.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="437">
-              <caret line="117" column="100" lean-forward="true" selection-start-line="117" selection-start-column="100" selection-end-line="117" selection-end-column="100" />
+            <state relative-caret-position="-2728">
+              <caret line="176" column="35" selection-start-line="176" selection-start-column="35" selection-end-line="176" selection-end-column="35" />
               <folding>
                 <element signature="e#88#97#0" expanded="true" />
               </folding>
@@ -72,8 +79,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/taxi_env.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1425">
-              <caret line="78" column="49" selection-start-line="78" selection-start-column="49" selection-end-line="78" selection-end-column="49" />
+            <state relative-caret-position="5665">
+              <caret line="365" selection-start-line="365" selection-end-line="365" />
               <folding>
                 <element signature="e#250#268#0" expanded="true" />
               </folding>
@@ -84,17 +91,17 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/DRQN_main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="2926">
+            <state relative-caret-position="819">
               <caret line="164" column="52" selection-start-line="164" selection-start-column="52" selection-end-line="164" selection-end-column="52" />
             </state>
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/config.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="608">
-              <caret line="32" column="49" lean-forward="true" selection-start-line="32" selection-start-column="49" selection-end-line="32" selection-end-column="49" />
+            <state>
+              <caret column="25" selection-start-column="25" selection-end-column="25" />
             </state>
           </provider>
         </entry>
@@ -102,8 +109,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/GREEDY_agent.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="493">
-              <caret line="41" column="71" lean-forward="true" selection-start-line="41" selection-start-column="71" selection-end-line="41" selection-end-column="71" />
+            <state relative-caret-position="-1">
+              <caret line="15" column="34" selection-start-line="15" selection-start-column="34" selection-end-line="15" selection-end-column="34" />
             </state>
           </provider>
         </entry>
@@ -112,7 +119,7 @@
         <entry file="file://$PROJECT_DIR$/GREEDY_main.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="228">
-              <caret line="21" column="45" lean-forward="true" selection-start-line="21" selection-start-column="45" selection-end-line="21" selection-end-column="45" />
+              <caret line="21" column="45" selection-start-line="21" selection-start-column="45" selection-end-line="21" selection-end-column="45" />
             </state>
           </provider>
         </entry>
@@ -128,10 +135,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>nn</find>
-      <find>station</find>
-      <find>predict_score</find>
-      <find>mainPredict</find>
       <find>total_steps</find>
       <find>update_target_net</find>
       <find>targetOps</find>
@@ -158,10 +161,15 @@
       <find>+myScope</find>
       <find>self.rnn_holder</find>
       <find>convFlat[:,t,:]</find>
+      <find>step</find>
+      <find>path</find>
+      <find>'softplus'</find>
+      <find>saver</find>
     </findStrings>
     <replaceStrings>
       <replace>5*</replace>
       <replace>convFlat.IndexdSlices[:,t,:]</replace>
+      <replace>'linear'</replace>
       <replace>convFlat</replace>
     </replaceStrings>
   </component>
@@ -177,20 +185,21 @@
         <option value="$PROJECT_DIR$/taxi_util.py" />
         <option value="$PROJECT_DIR$/online_linucb.py" />
         <option value="$PROJECT_DIR$/system_tracker.py" />
-        <option value="$PROJECT_DIR$/taxi_env.py" />
         <option value="$PROJECT_DIR$/demand_gen.py" />
         <option value="$PROJECT_DIR$/GREEDY_agent.py" />
         <option value="$PROJECT_DIR$/DRQN_main.py" />
         <option value="$PROJECT_DIR$/GREEDY_main.py" />
         <option value="$PROJECT_DIR$/bandit.py" />
+        <option value="$PROJECT_DIR$/network.py" />
         <option value="$PROJECT_DIR$/config.py" />
         <option value="$PROJECT_DIR$/DRQN_agent.py" />
-        <option value="$PROJECT_DIR$/network.py" />
+        <option value="$PROJECT_DIR$/taxi_env.py" />
         <option value="$PROJECT_DIR$/new_IDRQN_main.py" />
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="1">
+  <component name="ProjectFrameBounds">
+    <option name="x" value="1720" />
     <option name="width" value="1720" />
     <option name="height" value="1400" />
   </component>
@@ -368,8 +377,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="0" y="0" width="1720" height="1400" extended-state="1" />
-    <editor active="true" />
+    <frame x="1720" y="0" width="1720" height="1400" extended-state="0" />
     <layout>
       <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.24910821" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
@@ -425,23 +433,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/taxi_env.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1425">
-          <caret line="78" column="49" selection-start-line="78" selection-start-column="49" selection-end-line="78" selection-end-column="49" />
-          <folding>
-            <element signature="e#250#268#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/DRQN_main.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2926">
-          <caret line="164" column="52" selection-start-line="164" selection-start-column="52" selection-end-line="164" selection-end-column="52" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/network.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="835">
@@ -452,31 +443,10 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://C:/ProgramData/Anaconda3/envs/tf_gpu/Lib/site-packages/numpy/core/fromnumeric.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="660">
-          <caret line="74" column="44" lean-forward="true" selection-start-line="74" selection-start-column="44" selection-end-line="74" selection-end-column="44" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/GREEDY_main.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="228">
-          <caret line="21" column="45" lean-forward="true" selection-start-line="21" selection-start-column="45" selection-end-line="21" selection-end-column="45" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/GREEDY_agent.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="493">
-          <caret line="41" column="71" lean-forward="true" selection-start-line="41" selection-start-column="71" selection-end-line="41" selection-end-column="71" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/config.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="608">
-          <caret line="32" column="49" lean-forward="true" selection-start-line="32" selection-start-column="49" selection-end-line="32" selection-end-column="49" />
+          <caret line="21" column="45" selection-start-line="21" selection-start-column="45" selection-end-line="21" selection-end-column="45" />
         </state>
       </provider>
     </entry>
@@ -490,20 +460,58 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/new_IDRQN_main.py">
+    <entry file="file://C:/ProgramData/Anaconda3/envs/tf_gpu/Lib/site-packages/numpy/core/fromnumeric.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="247">
-          <caret line="298" selection-start-line="298" selection-end-line="313" selection-end-column="60" />
+        <state relative-caret-position="660">
+          <caret line="74" column="44" selection-start-line="74" selection-start-column="44" selection-end-line="74" selection-end-column="44" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/GREEDY_agent.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="-1">
+          <caret line="15" column="34" selection-start-line="15" selection-start-column="34" selection-end-line="15" selection-end-column="34" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/DRQN_main.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="819">
+          <caret line="164" column="52" selection-start-line="164" selection-start-column="52" selection-end-line="164" selection-end-column="52" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/taxi_env.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="5665">
+          <caret line="365" selection-start-line="365" selection-end-line="365" />
+          <folding>
+            <element signature="e#250#268#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/DRQN_agent.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="437">
-          <caret line="117" column="100" lean-forward="true" selection-start-line="117" selection-start-column="100" selection-end-line="117" selection-end-column="100" />
+        <state relative-caret-position="-2728">
+          <caret line="176" column="35" selection-start-line="176" selection-start-column="35" selection-end-line="176" selection-end-column="35" />
           <folding>
             <element signature="e#88#97#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/new_IDRQN_main.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="417">
+          <caret line="128" selection-start-line="128" selection-end-line="128" selection-end-column="41" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/config.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state>
+          <caret column="25" selection-start-column="25" selection-end-column="25" />
         </state>
       </provider>
     </entry>

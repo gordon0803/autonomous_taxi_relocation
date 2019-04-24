@@ -107,17 +107,19 @@ class drqn_agent_efficient():
         input_conv = tf.pad(imageIn, [[0, 0], [2, 2], [2, 2], [0, 0]], "REFLECT")  # reflect padding!
         conv1 = tf.layers.conv2d( \
             inputs=input_conv, filters=16, \
-            kernel_size=[5, 5], strides=[3, 3], activation='relu',reuse=None,padding='VALID', \
+            kernel_size=[5, 5], strides=[3, 3], activation='relu',reuse=None,kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False),padding='VALID', \
             name=myScope_main + '_net_conv1')
+        bn = tf.layers.batch_normalization(conv1, training=True)
         conv2 = tf.layers.conv2d( \
-            inputs=conv1, filters=32, \
-            kernel_size=[3, 3], strides=[2, 2], activation='relu',reuse=None,padding='VALID', \
+            inputs=bn, filters=32, \
+            kernel_size=[3, 3], strides=[2, 2], activation='relu',reuse=None,kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False),padding='VALID', \
             name=myScope_main + '_net_conv2')
+        bn = tf.layers.batch_normalization(conv2, training=True)
         conv3 = tf.layers.conv2d( \
-            inputs=conv2, filters=32, \
-            kernel_size=[3, 3], strides=[1, 1], activation='relu',reuse=None,padding='VALID', \
+            inputs=bn, filters=32, \
+            kernel_size=[3, 3], strides=[1, 1], activation='relu',reuse=None,kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False),padding='VALID', \
             name=myScope_main + '_net_conv3')
-
+        bn = tf.layers.batch_normalization(conv3, training=True)
         if self.use_gpu:
             print('Using CudnnLSTM')
             lstm = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1, num_units=self.lstm_units, name=myScope_main + '_lstm')
@@ -125,8 +127,7 @@ class drqn_agent_efficient():
             print('Using LSTMfused')
             lstm = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.lstm_units, name=myScope_main + '_lstm')
 
-
-        convFlat = tf.reshape(slim.flatten(conv3), [self.batch_size, self.trainLength, self.h_size],
+        convFlat = tf.reshape(slim.flatten(bn), [self.batch_size, self.trainLength, self.h_size],
                               name=myScope_main + '_convlution_flattern')
 
         iter=tf.reshape(self.iter_holder,[self.batch_size,self.trainLength,1])
@@ -182,17 +183,19 @@ class drqn_agent_efficient():
         input_conv = tf.pad(imageIn, [[0, 0], [2, 2], [2, 2], [0, 0]], "REFLECT")  # reflect padding!
         conv1 = tf.layers.conv2d( \
             inputs=input_conv, filters=16, \
-            kernel_size=[5, 5], strides=[3, 3], activation='relu',reuse=None,padding='VALID', \
+            kernel_size=[5, 5], strides=[3, 3], activation='relu',reuse=None,kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False),padding='VALID', \
             name=myScope_main + '_net_conv1')
+        bn = tf.layers.batch_normalization(conv1, training=True)
         conv2 = tf.layers.conv2d( \
-            inputs=conv1, filters=32, \
-            kernel_size=[3, 3], strides=[2, 2], activation='relu',reuse=None,padding='VALID', \
+            inputs=bn, filters=32, \
+            kernel_size=[3, 3], strides=[2, 2], activation='relu',reuse=None,kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False),padding='VALID', \
             name=myScope_main + '_net_conv2')
+        bn = tf.layers.batch_normalization(conv2, training=True)
         conv3 = tf.layers.conv2d( \
-            inputs=conv2, filters=32, \
-            kernel_size=[3, 3], strides=[1, 1], activation='relu',reuse=None,padding='VALID', \
+            inputs=bn, filters=32, \
+            kernel_size=[3, 3], strides=[1, 1], activation='relu',reuse=None,kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False),padding='VALID', \
             name=myScope_main + '_net_conv3')
-
+        bn = tf.layers.batch_normalization(conv3, training=True)
         if self.use_gpu:
             print('Using CudnnLSTM')
             lstm = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1, num_units=self.lstm_units, name=myScope_main + '_lstm')
@@ -200,7 +203,7 @@ class drqn_agent_efficient():
             print('Using LSTMfused')
             lstm = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.lstm_units, name=myScope_main + '_lstm')
 
-        convFlat = tf.reshape(slim.flatten(conv3), [self.batch_size, self.trainLength, self.h_size],
+        convFlat = tf.reshape(slim.flatten(bn), [self.batch_size, self.trainLength, self.h_size],
                               name=myScope_main + '_convlution_flattern')
 
         iter=tf.reshape(self.iter_holder,[self.batch_size,self.trainLength,1])

@@ -99,12 +99,14 @@ class drqn_agent_efficient():
                             name=myScope_main + 'in2')  # reflect padding!
         conv2 = tf.layers.conv2d( \
             inputs=input_conv, filters=16, \
-            kernel_size=[5, 5], strides=[2, 2], activation='relu',reuse=None,padding='VALID', \
+            kernel_size=[5, 5], strides=[2, 2], activation='relu',reuse=None,kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False),padding='VALID', \
             name=myScope_main + '_net_conv2')
+        bn = tf.layers.batch_normalization(conv2, training=True)
         conv3 = tf.layers.conv2d( \
-            inputs=conv2, filters=32, \
-            kernel_size=[3, 3], strides=[1, 1], activation='relu',reuse=None,padding='VALID', \
+            inputs=bn, filters=32, \
+            kernel_size=[3, 3], strides=[1, 1], activation='relu',reuse=None,kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False),padding='VALID', \
             name=myScope_main + '_net_conv3')
+        bn = tf.layers.batch_normalization(conv3, training=True)
 
         if self.use_gpu:
             print('Using CudnnLSTM')
@@ -115,7 +117,7 @@ class drqn_agent_efficient():
             lstm = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.lstm_units, name=myScope_main + '_lstm')
 
 
-        convFlat = tf.reshape(slim.flatten(conv3), [self.batch_size, self.trainLength, self.h_size],
+        convFlat = tf.reshape(slim.flatten(bn), [self.batch_size, self.trainLength, self.h_size],
                               name=myScope_main + '_convlution_flattern')
 
         iter=tf.reshape(self.iter_holder,[self.batch_size,self.trainLength,1])
@@ -138,9 +140,9 @@ class drqn_agent_efficient():
             # The output from the recurrent player is then split into separate Value and Advantage streams
             myScope = 'DRQN_main_' + str(i)
 
-            Advantage = tf.layers.dense(streamA, (self.N_station) * self.N, name=myScope + 'AW',
+            Advantage = tf.layers.dense(streamA, (self.N_station) * self.N, activation='linear',name=myScope + 'AW',
                                         reuse=None)  # advantage
-            Value = tf.layers.dense(streamV, 1, name=myScope + 'VW', reuse=None)  # advantage
+            Value = tf.layers.dense(streamV, 1, name=myScope + 'VW',activation='linear', reuse=None)  # advantage
 
             Qt = Value + tf.subtract(Advantage, tf.reduce_mean(Advantage, axis=1, keepdims=True),
                                      name=myScope + '_unshaped_Qout')
@@ -149,9 +151,9 @@ class drqn_agent_efficient():
 
             # for prediction
             streamA2, streamV2 = tf.split(self.rnn_holder, 2, 1, name=myScope + '_split_streamAV')
-            Advantage2 = tf.layers.dense(streamA2, (self.N_station) * self.N, name=myScope + 'AW',
+            Advantage2 = tf.layers.dense(streamA2, (self.N_station) * self.N, activation='linear',name=myScope + 'AW',
                                          reuse=True)  # advantage
-            Value2 = tf.layers.dense(streamV2, 1, name=myScope + 'VW', reuse=True)  # advantage
+            Value2 = tf.layers.dense(streamV2, 1, name=myScope + 'VW', activation='linear',reuse=True)  # advantage
             Qt2 = Value2 + tf.subtract(Advantage2, tf.reduce_mean(Advantage2, axis=1, keepdims=True),
                                        name=myScope + '_unshaped_Qout')
             Qout2 = tf.reshape(Qt2, [-1, self.N_station, self.N])  # reshape it to N_station by self.atoms dimension
@@ -174,12 +176,15 @@ class drqn_agent_efficient():
                             name=myScope_main + 'in2')  # reflect padding!
         conv2 = tf.layers.conv2d( \
             inputs=input_conv, filters=16, \
-            kernel_size=[5, 5], strides=[2, 2], activation='relu',reuse=None,padding='VALID', \
+            kernel_size=[5, 5], strides=[2, 2], activation='relu',reuse=None,kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False),padding='VALID', \
             name=myScope_main + '_net_conv2')
+        bn = tf.layers.batch_normalization(conv2, training=True)
         conv3 = tf.layers.conv2d( \
-            inputs=conv2, filters=32, \
-            kernel_size=[3, 3], strides=[1, 1], activation='relu',reuse=None,padding='VALID', \
+            inputs=bn, filters=32, \
+            kernel_size=[3, 3], strides=[1, 1], activation='relu',reuse=None,kernel_initializer=tf.contrib.layers.xavier_initializer(uniform=False),padding='VALID', \
             name=myScope_main + '_net_conv3')
+        bn = tf.layers.batch_normalization(conv3, training=True)
+
         if self.use_gpu:
             print('Using CudnnLSTM')
             lstm = tf.contrib.cudnn_rnn.CudnnLSTM(num_layers=1, num_units=self.lstm_units, name=myScope_main + '_lstm')
@@ -187,8 +192,9 @@ class drqn_agent_efficient():
         else:
             print('Using LSTMfused')
             lstm = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.lstm_units, name=myScope_main + '_lstm')
-        ##construct the main network
-        convFlat = tf.reshape(slim.flatten(conv3), [self.batch_size, self.trainLength, self.h_size],
+
+
+        convFlat = tf.reshape(slim.flatten(bn), [self.batch_size, self.trainLength, self.h_size],
                               name=myScope_main + '_convlution_flattern')
 
         iter=tf.reshape(self.iter_holder,[self.batch_size,self.trainLength,1])
@@ -202,9 +208,9 @@ class drqn_agent_efficient():
 
         for i in range(self.N_station):
             myScope = 'DRQN_Target_' + str(i)
-            Advantage = tf.layers.dense(streamA, (self.N_station) * self.N, name=myScope + 'AW',
+            Advantage = tf.layers.dense(streamA, (self.N_station) * self.N, activation='linear',name=myScope + 'AW',
                                         reuse=None)  # advantage
-            Value = tf.layers.dense(streamV, 1, name=myScope + 'VW', reuse=None)  # advantage
+            Value = tf.layers.dense(streamV, 1, name=myScope + 'VW',activation='linear', reuse=None)  # advantage
 
             Qt = Value + tf.subtract(Advantage, tf.reduce_mean(Advantage, axis=1, keepdims=True),
                                      name=myScope + '_unshaped_Qout')

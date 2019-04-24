@@ -30,7 +30,7 @@ TRAIN_CONFIG = {
 
 NET_CONFIG={
     'Risk_Distort':1, #change the shape of risk or not
-    'eta': 0.3  #how to alter the reward function
+    'eta': 0.8  #how to alter the reward function
 }
 
 #No experience replay, masking first 10 elementswf

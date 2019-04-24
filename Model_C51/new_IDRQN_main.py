@@ -14,6 +14,7 @@ import pickle
 import tensorflow as tf
 import numpy as np
 import network
+import matplotlib.pyplot as plt
 import scipy
 import DRQN_agent
 from system_tracker import system_tracker
@@ -54,7 +55,7 @@ anneling_steps = config.TRAIN_CONFIG['anneling_steps']  # How many steps of trai
 num_episodes = config.TRAIN_CONFIG['num_episodes']  # How many episodes of game environment to train network with.
 load_model = config.TRAIN_CONFIG['load_model']  # Whether to load a saved model.
 warmup_time = config.TRAIN_CONFIG['warmup_time'];
-path = "./drqn"  # The path to save our model to.
+path = "./small_network_save_model"  # The path to save our model to.
 h_size = config.TRAIN_CONFIG['h_size']
 max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength * 10  # How many steps of random actions before training begins.
@@ -83,7 +84,7 @@ print('System Successfully Initialized!')
 outf=open('temp_record.txt','w')
 # Set the rate of random action decrease.
 e = startE
-stepDrop = endE**(1/anneling_steps)
+stepDrop = (startE-endE)/anneling_steps
 
 # create lists to contain total rewards and steps per episode
 jList = []
@@ -125,7 +126,7 @@ with tf.Session(config=config1) as sess:
     # writer = tf.summary.FileWriter('./graphs', sess.graph)
     # writer.close()1
     sess.run(global_init)
-
+    saver = tf.train.Saver(max_to_keep=5)
     Qp_in=[]
     Qp_value_in=[]
     Q1_in=[]
@@ -255,7 +256,7 @@ with tf.Session(config=config1) as sess:
             if total_steps > pre_train_steps and j > warmup_time:
                 # start training here
                 if e > endE:
-                    e*=stepDrop
+                    e-=stepDrop
 
             newr=r*np.ones((N_station))
 
@@ -295,6 +296,12 @@ with tf.Session(config=config1) as sess:
 
                     for station in range(N_station):
                         trainBatch= trainBatch_list[station]
+
+                        #visual and normalization
+                        b=np.vstack(trainBatch[:,3])
+                        batch_mean=b.sum(axis=0)/len(b)
+                        batch_var=((b-batch_mean)**2).sum(axis=0)/len(b)
+                        norm_b=(b-batch_mean)/((batch_var+1e-8)**0.5)
                         train_predict_score = linucb_agent.return_upper_bound_batch(trainBatch[:, 6]) * exp_dist
                         past_train_eps=np.vstack(trainBatch[:,7])
                         past_train_iter = np.vstack(trainBatch[:, 8])
@@ -352,13 +359,11 @@ with tf.Session(config=config1) as sess:
         outf.writelines(str(i)+','+str(rAll)+','+str(total_serve)+','+str(total_leave)+'\n')
 
 
-        # Periodically save the model.
-        # if i % 100 == 0 and i != 0:
-        #     saver.save(sess, path + '/model-' + str(i) + '.cptk')
-        #     print("Saved Model")
-        # if len(rList) % summaryLength == 0 and len(rList) != 0:
-        #     print(total_steps, np.mean(rList[-summaryLength:]), e)
-        #             saveToCenter(i,rList,jList,np.reshape(np.array(episodeBuffer),[len(episodeBuffer),5]),\
+       # Periodically save the model.
+        if i % 15 == 0 and i != 0:
+            saver.save(sess, path + '/model-' + str(i) + '.cptk')
+            print("Saved Model")
+
 # summaryLength,h_size,sess,mainQN,time_per_step)
 # saver.save(sess,path+'/model-'+str(i)+'.cptk')
 outf.close()

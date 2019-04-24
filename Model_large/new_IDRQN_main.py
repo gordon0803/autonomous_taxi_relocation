@@ -58,7 +58,7 @@ anneling_steps = config.TRAIN_CONFIG['anneling_steps']  # How many steps of trai
 num_episodes = config.TRAIN_CONFIG['num_episodes']  # How many episodes of game environment to train network with.
 load_model = config.TRAIN_CONFIG['load_model']  # Whether to load a saved model.
 warmup_time = config.TRAIN_CONFIG['warmup_time'];
-path = "./drqn"  # The path to save our model to.
+path = "./large_case_model"  # The path to save our model to.
 h_size = config.TRAIN_CONFIG['h_size']
 max_epLength = config.TRAIN_CONFIG['max_epLength']
 pre_train_steps = max_epLength * 10  # How many steps of random actions before training begins.
@@ -87,7 +87,7 @@ print('System Successfully Initialized!')
 outf=open('temp_record.txt','w')
 # Set the rate of random action decrease.
 e = startE
-stepDrop = endE**(1/anneling_steps)
+stepDrop = (startE-endE)/anneling_steps
 
 # create lists to contain total rewards and steps per episode
 jList = []
@@ -128,6 +128,7 @@ with tf.Session(config=config1) as sess:
 
 
     global_init = tf.global_variables_initializer()
+    saver = tf.train.Saver(max_to_keep=10)
     # writer = tf.summary.FileWriter('./graphs', sess.graph)
     # writer.close()1
     sess.run(global_init)
@@ -263,7 +264,7 @@ with tf.Session(config=config1) as sess:
             if total_steps > pre_train_steps and j > warmup_time:
                 # start training here
                 if e > endE:
-                    e*=stepDrop
+                    e-=stepDrop
             # episode buffer
             # we don't store the initial 200 steps of the simulation, as warm up periods
             newr=r*np.ones((N_station))
@@ -379,9 +380,9 @@ with tf.Session(config=config1) as sess:
 
 
         # Periodically save the model.
-        # if i % 100 == 0 and i != 0:
-        #     saver.save(sess, path + '/model-' + str(i) + '.cptk')
-        #     print("Saved Model")
+        if i % 20 == 0 and i != 0:
+            saver.save(sess, path + '/model-' + str(i) + '.cptk')
+            print("Saved Model")
         # if len(rList) % summaryLength == 0 and len(rList) != 0:
         #     print(total_steps, np.mean(rList[-summaryLength:]), e)
         #             saveToCenter(i,rList,jList,np.reshape(np.array(episodeBuffer),[len(episodeBuffer),5]),\
