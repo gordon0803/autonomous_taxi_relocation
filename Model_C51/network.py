@@ -133,7 +133,7 @@ class experience_buffer():
         for episode in sampled_episodes:
             sampledTraces.append(episode)
         sampledTraces = np.array(sampledTraces)
-        return np.reshape(sampledTraces, [batch_size * trace_length, 7])
+        return np.reshape(sampledTraces, [batch_size * trace_length, 9])
 
 class bandit_buffer():
         def __init__(self, buffer_size=5000):
@@ -153,7 +153,7 @@ class bandit_buffer():
             for episode in sampled_episodes:
                 sampledTraces.append(episode)
             sampledTraces = np.array(sampledTraces)
-            return np.reshape(sampledTraces, [batch_size, 7])
+            return np.reshape(sampledTraces, [batch_size, 9])
 
 
 #prioritized experience buffer

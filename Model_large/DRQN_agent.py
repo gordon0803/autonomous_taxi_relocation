@@ -10,7 +10,7 @@ import time
 import tensorflow.contrib.slim as slim
 import config
 from scipy.stats import norm
-
+import scipy
 
 
 
@@ -59,16 +59,22 @@ class drqn_agent_efficient():
 
         #place holders.
         #for current observations
-        self.scalarInput = [tf.placeholder(shape=[None, N_station * N_station * 5], dtype=tf.float32,name='main_input') for i in range(self.N_station)]
+        self.scalarInput = tf.placeholder(shape=[None, N_station * N_station * 5], dtype=tf.float32,name='main_input')
         self.trainLength = tf.placeholder(dtype=tf.int32, name= 'trainlength')
         self.batch_size = tf.placeholder(dtype=tf.int32, shape=[], name= 'batchsize')
+        self.iter_holder=tf.placeholder(dtype=tf.float32,shape=[None, 1],name='iterholder')
+        self.eps_holder = tf.placeholder(dtype=tf.float32, shape=[None, 1], name='epsholder')
+
+
         self.targetQ=[]
         self.actions=[]
         self.rewards=[]
         self.main_rnn_value=[]
         self.station_score=[]
         self.predict_score = []
-        self.rnn_holder = tf.placeholder(shape=[None, self.lstm_units], dtype=tf.float32, name='main_input')
+        self.rnn_holder=tf.placeholder(shape=[None, self.lstm_units], dtype=tf.float32,name='main_input')
+        self.rnn_cstate_holder = tf.placeholder(shape=[1,None,self.lstm_units], dtype=tf.float32, name='main_input')
+        self.rnn_hstate_holder = tf.placeholder(shape=[1,None,self.lstm_units], dtype=tf.float32, name='main_input')
 
         for i in range(N_station):
             targetQ=tf.placeholder(shape=[None,self.N], dtype=tf.float32)
@@ -97,19 +103,19 @@ class drqn_agent_efficient():
 
     def build_main(self):
         myScope_main = 'DRQN_Main_'
-        imageIn = tf.reshape(self.scalarInput[0], shape=[-1, self.N_station, self.N_station, 5])
+        imageIn = tf.reshape(self.scalarInput, shape=[-1, self.N_station, self.N_station, 5])
         input_conv = tf.pad(imageIn, [[0, 0], [2, 2], [2, 2], [0, 0]], "REFLECT")  # reflect padding!
         conv1 = tf.layers.conv2d( \
             inputs=input_conv, filters=16, \
-            kernel_size=[8, 8], strides=[3, 3], activation='relu',reuse=None,padding='VALID', \
+            kernel_size=[5, 5], strides=[3, 3], activation='relu',reuse=None,padding='VALID', \
             name=myScope_main + '_net_conv1')
         conv2 = tf.layers.conv2d( \
             inputs=conv1, filters=32, \
-            kernel_size=[4, 4], strides=[2, 2], activation='relu',reuse=None,padding='VALID', \
+            kernel_size=[3, 3], strides=[2, 2], activation='relu',reuse=None,padding='VALID', \
             name=myScope_main + '_net_conv2')
         conv3 = tf.layers.conv2d( \
             inputs=conv2, filters=32, \
-            kernel_size=[3, 3], strides=[2, 2], activation='relu',reuse=None,padding='VALID', \
+            kernel_size=[3, 3], strides=[1, 1], activation='relu',reuse=None,padding='VALID', \
             name=myScope_main + '_net_conv3')
 
         if self.use_gpu:
@@ -120,33 +126,27 @@ class drqn_agent_efficient():
             lstm = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.lstm_units, name=myScope_main + '_lstm')
 
 
+        convFlat = tf.reshape(slim.flatten(conv3), [self.batch_size, self.trainLength, self.h_size],
+                              name=myScope_main + '_convlution_flattern')
+
+        iter=tf.reshape(self.iter_holder,[self.batch_size,self.trainLength,1])
+        eps=tf.reshape(self.eps_holder,[self.batch_size,self.trainLength,1])
+        convFlat=tf.concat([convFlat,iter,eps],axis=-1)
+
+        rnn, rnn_state = lstm(inputs=convFlat)
+        rnn = tf.reshape(rnn, shape=[-1, self.lstm_units], name=myScope_main + '_reshapeRNN_out')
+
+        my_initial_state = tf.nn.rnn_cell.LSTMStateTuple(self.rnn_cstate_holder,self.rnn_hstate_holder)
+        rnnin,rnn_out_state=lstm(inputs=convFlat,initial_state=my_initial_state)
+        self.main_rnn_value.append(rnnin)
+        self.rnn_out_state=rnn_out_state
+        streamA, streamV = tf.split(rnn, 2, 1, name=myScope_main + '_split_streamAV')
+
+
+
         for i in range(self.N_station):
             # The output from the recurrent player is then split into separate Value and Advantage streams
             myScope = 'DRQN_main_' + str(i)
-            imageIn = tf.reshape(self.scalarInput[i], shape=[-1, self.N_station, self.N_station, 5],
-                                 name=myScope + 'in1')
-            input_conv = tf.pad(imageIn, [[0, 0], [2, 2], [2, 2], [0, 0]], "REFLECT",
-                                name=myScope + 'in2')  # reflect padding!
-
-            conv1 = tf.layers.conv2d( \
-                inputs=input_conv, filters=16, \
-                kernel_size=[8, 8], strides=[3, 3], activation='relu', reuse=True, padding='VALID', \
-                name=myScope_main + '_net_conv1')
-            conv2 = tf.layers.conv2d( \
-                inputs=conv1, filters=32, \
-                kernel_size=[4, 4], strides=[2, 2], activation='relu', reuse=True, padding='VALID', \
-                name=myScope_main + '_net_conv2')
-            conv3 = tf.layers.conv2d( \
-                inputs=conv2, filters=32, \
-                kernel_size=[3, 3], strides=[2, 2], activation='relu', reuse=True, padding='VALID', \
-                name=myScope_main + '_net_conv3')
-
-            convFlat = tf.reshape(slim.flatten(conv3), [self.batch_size, self.trainLength, self.h_size],
-                                  name=myScope + '_convlution_flattern')
-            rnn, rnn_state = lstm(inputs=convFlat)
-            rnn = tf.reshape(rnn, shape=[-1, self.lstm_units], name=myScope + '_reshapeRNN_out')
-            self.main_rnn_value.append(rnn)
-            streamA, streamV = tf.split(rnn, 2, 1, name=myScope + '_split_streamAV')
 
             Advantage = tf.layers.dense(streamA, (self.N_station) * self.N, name=myScope + 'AW',
                                         reuse=None)  # advantage
@@ -178,19 +178,19 @@ class drqn_agent_efficient():
     def build_target(self):
         ##construct the main network
         myScope_main = 'DRQN_Target_'
-        imageIn = tf.reshape(self.scalarInput[0], shape=[-1, self.N_station, self.N_station, 5])
+        imageIn = tf.reshape(self.scalarInput, shape=[-1, self.N_station, self.N_station, 5])
         input_conv = tf.pad(imageIn, [[0, 0], [2, 2], [2, 2], [0, 0]], "REFLECT")  # reflect padding!
         conv1 = tf.layers.conv2d( \
             inputs=input_conv, filters=16, \
-            kernel_size=[8, 8], strides=[3, 3], activation='relu',reuse=None,padding='VALID', \
+            kernel_size=[5, 5], strides=[3, 3], activation='relu',reuse=None,padding='VALID', \
             name=myScope_main + '_net_conv1')
         conv2 = tf.layers.conv2d( \
             inputs=conv1, filters=32, \
-            kernel_size=[4, 4], strides=[2, 2], activation='relu',reuse=None,padding='VALID', \
+            kernel_size=[3, 3], strides=[2, 2], activation='relu',reuse=None,padding='VALID', \
             name=myScope_main + '_net_conv2')
         conv3 = tf.layers.conv2d( \
             inputs=conv2, filters=32, \
-            kernel_size=[3, 3], strides=[2, 2], activation='relu',reuse=None,padding='VALID', \
+            kernel_size=[3, 3], strides=[1, 1], activation='relu',reuse=None,padding='VALID', \
             name=myScope_main + '_net_conv3')
 
         if self.use_gpu:
@@ -199,33 +199,20 @@ class drqn_agent_efficient():
         else:
             print('Using LSTMfused')
             lstm = tf.contrib.rnn.LSTMBlockFusedCell(num_units=self.lstm_units, name=myScope_main + '_lstm')
-        ##construct the main network
+
+        convFlat = tf.reshape(slim.flatten(conv3), [self.batch_size, self.trainLength, self.h_size],
+                              name=myScope_main + '_convlution_flattern')
+
+        iter=tf.reshape(self.iter_holder,[self.batch_size,self.trainLength,1])
+        eps=tf.reshape(self.eps_holder,[self.batch_size,self.trainLength,1])
+        convFlat=tf.concat([convFlat,iter,eps],axis=-1)
+
+        rnn, rnn_state = lstm(inputs=convFlat)
+        rnn = tf.reshape(rnn, shape=[-1, self.lstm_units], name=myScope_main + '_reshapeRNN_out')
+        streamA, streamV = tf.split(rnn, 2, 1, name=myScope_main + '_split_streamAV')
+
         for i in range(self.N_station):
             myScope = 'DRQN_Target_' + str(i)
-            imageIn = tf.reshape(self.scalarInput[i], shape=[-1, self.N_station, self.N_station, 5],
-                                 name=myScope + 'in1')
-            input_conv = tf.pad(imageIn, [[0, 0], [2, 2], [2, 2], [0, 0]], "REFLECT",
-                                name=myScope + 'in2')  # reflect padding!
-
-            conv1 = tf.layers.conv2d( \
-                inputs=input_conv, filters=16, \
-                kernel_size=[8, 8], strides=[3, 3], activation='relu', reuse=True, padding='VALID', \
-                name=myScope_main + '_net_conv1')
-            conv2 = tf.layers.conv2d( \
-                inputs=conv1, filters=32, \
-                kernel_size=[4, 4], strides=[2, 2], activation='relu', reuse=True, padding='VALID', \
-                name=myScope_main + '_net_conv2')
-            conv3 = tf.layers.conv2d( \
-                inputs=conv2, filters=32, \
-                kernel_size=[3, 3], strides=[2, 2], activation='relu', reuse=True, padding='VALID', \
-                name=myScope_main + '_net_conv3')
-
-            convFlat = tf.reshape(slim.flatten(conv3), [self.batch_size, self.trainLength, self.h_size],
-                                  name=myScope + '_convlution_flattern')
-            rnn, rnn_state = lstm(inputs=convFlat)
-            rnn = tf.reshape(rnn, shape=[-1, self.lstm_units], name=myScope + '_reshapeRNN_out')
-
-            streamA, streamV = tf.split(rnn, 2, 1, name=myScope + '_split_streamAV')
             Advantage = tf.layers.dense(streamA, (self.N_station) * self.N, name=myScope + 'AW',
                                         reuse=None)  # advantage
             Value = tf.layers.dense(streamV, 1, name=myScope + 'VW', reuse=None)  # advantage
@@ -284,47 +271,30 @@ class drqn_agent_efficient():
         network.updateTarget(self.targetOps, self.sess)
 
 
-    # def predict(self, rnn,predict_score,e,station,threshold,rng,valid,invalid):
-    #     # make the prediction
-    #     valid[station]=True
-    #
-    #    # print(self.conf)
-    #     if rng<e: #epsilon greedy
-    #         if e==1:
-    #             action=np.random.randint(len(predict_score))
-    #         else:
-    #             idx=[i for i, x in enumerate(valid) if x]
-    #             if station not in idx:
-    #                 idx.append(station)
-    #             action=np.random.choice(idx)
-    #
-    #     else:
-    #         #get the adjusted predict score
-    #         #print(predict_score)
-    #         # if sum(b)<=2:
-    #         #     b=adj_predict.argsort()[-3:][::-1]
-    #         # print('Feasible Solution:',sum(b), 'Station ID:',station)
-    #         predict_score[invalid]=1e4
-    #         predict_score[valid]=0;
-    #         Q= self.sess.run(self.mainPredict[station], feed_dict={self.rnn_holder: rnn, self.predict_score[station]:[predict_score]})
-    #         action=Q[0]
-    #
-    #     return action
-    def predict(self,rnn,predict_score,e,station,threshold,rng,valid,invalid,all_action):
-        valid[station] = True
+    def predict(self, rnn,predict_score,e,station,threshold,rng,valid,invalid):
+        # make the prediction
+        valid[station]=True
 
-        # print(self.conf)
-        if rng < e:  # epsilon greedy
-            if e == 1:
-                action = np.random.randint(len(predict_score))
+       # print(self.conf)
+        if rng<e: #epsilon greedy
+            if e==1:
+                action=np.random.randint(len(predict_score))
             else:
-                idx = [i for i, x in enumerate(valid) if x]
+                idx=[i for i, x in enumerate(valid) if x]
                 if station not in idx:
                     idx.append(station)
-                action = np.random.choice(idx)
+                action=np.random.choice(idx)
 
         else:
-            action = all_action[station][0]
+            #get the adjusted predict score
+            #print(predict_score)
+            # if sum(b)<=2:
+            #     b=adj_predict.argsort()[-3:][::-1]
+            # print('Feasible Solution:',sum(b), 'Station ID:',station)
+            predict_score[invalid]=1e4
+            predict_score[valid]=0;
+            Q= self.sess.run(self.mainPredict[station], feed_dict={self.rnn_holder: rnn[0][0], self.predict_score[station]:[predict_score]})
+            action=Q[0]
 
         return action
 

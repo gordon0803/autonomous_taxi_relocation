@@ -56,7 +56,7 @@ sys_tracker = system_tracker()
 sys_tracker.initialize(config, distance, travel_time, arrival_rate, int(taxi_input), N_station, num_episodes, max_epLength)
 
 #------------------Train the network-----------------------
-
+np.random.seed(rng_seed)
 
 # create lists to contain total rewards and steps per episode
 jList = []

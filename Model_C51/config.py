@@ -3,8 +3,8 @@
 
 TRAIN_CONFIG = {
     'batch_size':32,
-    'trace_length': 4,
-    'update_freq': 30,
+    'trace_length': 10,
+    'update_freq':60,
     'lstm_unit':256,
     'y': .99,
     'elimination_threshold':0.2,
@@ -30,7 +30,7 @@ TRAIN_CONFIG = {
 
 NET_CONFIG={
     'Risk_Distort':1, #change the shape of risk or not
-    'eta': 0.8  #how to alter the reward function
+    'eta': 0.3  #how to alter the reward function
 }
 
 #No experience replay, masking first 10 elementswf

@@ -52,5 +52,5 @@ class greedy_agent():
         return inventory_gap
 
     def meansure_threshold(self,s):
-        threshold = (self.threshold * self.time_step + np.diag(np.reshape(s[range(0, len(s), len(s) // self.N_station_pair)], (self.N_station, self.N_station))) * self.max_passenger) / (self.time_step + 1)
+        threshold = (0.9*self.threshold+ 0.1*np.diag(np.reshape(s[range(0, len(s), len(s) // self.N_station_pair)], (self.N_station, self.N_station))) * self.max_passenger)
         return threshold

@@ -8,6 +8,7 @@ import numpy as np
 import taxi_util as util
 from collections import deque
 import math
+import config
 
 
 
@@ -156,7 +157,7 @@ class taxi_simulator():
             for j in range(len(self.taxi_in_charge[i])):
                 if self.taxi_in_charge[i]:
                     taxi = self.taxi_in_charge[i].popleft()
-                    taxi.battery += 0.1 * taxi.max_battery  # every time step, 0.5% of battery get charged
+                    taxi.battery += 0.05 * taxi.max_battery  # every time step, 0.5% of battery get charged
                     if taxi.battery >= taxi.max_battery:
                         taxi.battery = taxi.max_battery
                         self.taxi_in_q[i].append(taxi)
@@ -308,7 +309,7 @@ class taxi_simulator():
 
         #pregeneration demand
         self.arrival_rate = []
-        max_time_step = 2880;
+        max_time_step = config.TRAIN_CONFIG['max_epLength'];
         steps = max_time_step // (len(self.arrival_input[0]) ) -1
         x_base = [steps * i for i in range(len(self.arrival_input[0]))]
         x_project = [i for i in range(max_time_step)]
